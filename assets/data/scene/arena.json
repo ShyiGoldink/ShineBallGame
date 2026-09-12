@@ -1,0 +1,16 @@
+{
+  "id": "arena_basic",
+  "arena": {
+    "width": 1920,
+    "height": 1080,
+    "wall_thickness": 40
+  },
+  "spawn": {
+    "player": [300, 540],
+    "enemy": [1620, 540]
+  },
+  "rules": {
+    "round_time": 60,
+    "hp_scale": 1.0
+  }
+}

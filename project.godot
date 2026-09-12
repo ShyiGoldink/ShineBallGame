@@ -11,8 +11,14 @@ config_version=5
 [application]
 
 config/name="ShineBallGame"
-config/features=PackedStringArray("4.7", "GL Compatibility")
+run/main_scene="res://assets/scene/index.tscn"
+config/features=PackedStringArray("4.7", "C#", "GL Compatibility")
 config/icon="res://icon.svg"
+
+[autoload]
+
+Bootstrap="*res://assets/scripts/tool/Bootstrap.cs"
+GameManager="*res://assets/scripts/basic/GameManager.cs"
 
 [display]
 
@@ -21,9 +27,14 @@ window/size/viewport_height=1080
 window/size/borderless=true
 window/stretch/mode="canvas_items"
 
+[dotnet]
+
+project/assembly_name="ShineBallGame"
+
 [physics]
 
 3d/physics_engine="Jolt Physics"
+common/physics_ticks_per_second=120
 
 [rendering]
 

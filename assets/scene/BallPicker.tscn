@@ -1,0 +1,29 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://assets/scripts/ui/BallPicker.cs" id="1_picker"]
+
+[node name="BallPicker" type="PanelContainer"]
+script = ExtResource("1_picker")
+
+[node name="Box" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 24
+
+[node name="Title" type="Label" parent="Box"]
+layout_mode = 2
+text = "玩家"
+horizontal_alignment = 1
+
+[node name="Grid" type="GridContainer" parent="Box"]
+layout_mode = 2
+size_flags_horizontal = 4
+columns = 3
+
+[node name="Status" type="Label" parent="Box"]
+layout_mode = 2
+text = "未选择"
+horizontal_alignment = 1
+
+[node name="Confirm" type="Button" parent="Box"]
+layout_mode = 2
+text = "确认"

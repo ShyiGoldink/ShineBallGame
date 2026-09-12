@@ -1,0 +1,11 @@
+{
+  "name": "ball",
+  "hp": 1200,
+  "type": 1,
+  "selfcomponents": {
+    "2001": { "damage": 100 },
+    "1001": { "speed": 900 },
+    "4001": {}
+  },
+  "enemycomponents": {}
+}

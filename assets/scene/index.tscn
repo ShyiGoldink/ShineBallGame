@@ -1,14 +1,114 @@
 [gd_scene format=3 uid="uid://cmxs50ljk1nar"]
 
-[node name="Index" type="Control" unique_id=497123243]
+[ext_resource type="Script" uid="uid://rk68qrhueoor" path="res://assets/scripts/ui/IndexManager.cs" id="2_3rld0"]
+[ext_resource type="Theme" path="res://assets/theme/ui_theme.tres" id="2_theme"]
+[ext_resource type="PackedScene" path="res://assets/scene/BallPicker.tscn" id="3_picker"]
+[ext_resource type="Script" path="res://assets/scripts/ui/SelectPage.cs" id="4_selectpage"]
+
+[node name="IndexManager" type="Control" unique_id=533954150]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = ExtResource("2_theme")
+script = ExtResource("2_3rld0")
 
-[node name="IndexSelections" type="Control" parent="." unique_id=268395769]
-anchors_preset = 0
-offset_right = 1920.0
-offset_bottom = 1080.0
+[node name="Index" type="Control" parent="." unique_id=1820557676]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Background" type="ColorRect" parent="Index" unique_id=464611870]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.07, 0.08, 0.11, 1)
+
+[node name="Box" type="VBoxContainer" parent="Index" unique_id=1321650935]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -320.0
+offset_top = -160.0
+offset_right = 320.0
+offset_bottom = 160.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 40
+
+[node name="Title" type="Label" parent="Index/Box" unique_id=2134764000]
+layout_mode = 2
+text = "小球对战"
+horizontal_alignment = 1
+
+[node name="ToSelect" type="Button" parent="Index/Box" unique_id=418293669]
+layout_mode = 2
+text = "开始"
+
+[node name="Select" type="Control" parent="." unique_id=883470219]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("4_selectpage")
+
+[node name="Background" type="ColorRect" parent="Select" unique_id=120914657]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.09, 0.07, 0.13, 1)
+
+[node name="Row" type="HBoxContainer" parent="Select"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 60.0
+offset_top = 60.0
+offset_right = -60.0
+offset_bottom = -60.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 40
+
+[node name="LeftPicker" parent="Select/Row" instance=ExtResource("3_picker")]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Center" type="VBoxContainer" parent="Select/Row"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_constants/separation = 30
+
+[node name="StartGame" type="Button" parent="Select/Row/Center"]
+layout_mode = 2
+disabled = true
+text = "开始游戏"
+
+[node name="ToIndex" type="Button" parent="Select/Row/Center"]
+layout_mode = 2
+text = "返回"
+
+[node name="RightPicker" parent="Select/Row" instance=ExtResource("3_picker")]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[connection signal="pressed" from="Index/Box/ToSelect" to="." method="ShowSelect"]
+[connection signal="pressed" from="Select/Row/Center/ToIndex" to="." method="ShowIndex"]

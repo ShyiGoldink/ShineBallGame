@@ -1,0 +1,8 @@
+[gd_resource type="Theme" format=3 uid="uid://bpyfuaqjc3abd"]
+
+[sub_resource type="SystemFont" id="SystemFont_cjk"]
+font_names = PackedStringArray("Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "sans-serif")
+
+[resource]
+default_font = SubResource("SystemFont_cjk")
+default_font_size = 36

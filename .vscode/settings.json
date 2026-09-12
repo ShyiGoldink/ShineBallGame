@@ -1,0 +1,6 @@
+{
+    "omnisharp.enableRoslynAnalyzers": true,
+    "omnisharp.enableEditorConfigSupport": true,
+    "omnisharp.projectLoadTimeout": 60,
+    "dotnet.enablePackageRestore": true
+}
