@@ -33,8 +33,15 @@ project/assembly_name="ShineBallGame"
 
 [physics]
 
-3d/physics_engine="Jolt Physics"
 common/physics_ticks_per_second=120
+3d/physics_engine="Jolt Physics"
+
+[plugins]
+
+spine_godot={
+"enable": true,
+"name": "spine_godot"
+}
 
 [rendering]
 

@@ -36,6 +36,9 @@ public partial class IndexManager : Control
 
     public override void _Ready()
     {
+        // 兜底：不管从哪条路进来的，主界面都不该是暂停状态
+        GetTree().Paused = false;
+
         // 直接子节点全部登记成页面，场景里第一个页面就是打开时的初始页。
         foreach (var child in GetChildren())
         {

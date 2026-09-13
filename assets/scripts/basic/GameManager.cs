@@ -8,6 +8,7 @@ using Godot;
 public partial class GameManager : Node
 {
     private const string GameScene = "res://assets/scene/game.tscn";
+    private const string MenuScene = "res://assets/scene/index.tscn";
 
     /// <summary>全局唯一实例。</summary>
     public static GameManager Instance { get; private set; }
@@ -48,5 +49,17 @@ public partial class GameManager : Node
 
         GD.Print($"[对战] 开始：{Player1Ball} vs {Player2Ball}");
         GetTree().ChangeSceneToFile(GameScene);
+    }
+
+    /// <summary>
+    /// 回主界面。先解开暂停再切场景——不然新场景一进去就是冻结的，
+    /// 这就是"暂停之后整个游戏出 bug"最常见的那种。
+    /// </summary>
+    public void ReturnToMenu()
+    {
+        GetTree().Paused = false;
+
+        GD.Print("[对战] 回到主界面");
+        GetTree().ChangeSceneToFile(MenuScene);
     }
 }

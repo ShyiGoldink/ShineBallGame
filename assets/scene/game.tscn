@@ -1,6 +1,9 @@
-[gd_scene load_steps=4 format=3 uid="uid://ckfjux3rmndp3"]
+[gd_scene load_steps=7 format=3 uid="uid://ckfjux3rmndp3"]
 
 [ext_resource type="Script" path="res://assets/scripts/basic/Game.cs" id="1_game"]
+[ext_resource type="PackedScene" path="res://assets/scene/BallDataPanel.tscn" id="2_panel"]
+[ext_resource type="Theme" path="res://assets/theme/ui_theme.tres" id="3_theme"]
+[ext_resource type="Script" path="res://assets/scripts/ui/ResultPrompt.cs" id="4_prompt"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_horizontal"]
 size = Vector2(1000, 40)
@@ -75,7 +78,46 @@ offset_top = 320.0
 offset_right = 1160.0
 offset_bottom = 720.0
 mouse_filter = 2
+theme = ExtResource("3_theme")
 theme_override_font_sizes/font_size = 180
 text = "3"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="Result" type="Label" parent="."]
+visible = false
+offset_left = 460.0
+offset_top = 400.0
+offset_right = 1460.0
+offset_bottom = 560.0
+mouse_filter = 2
+theme = ExtResource("3_theme")
+theme_override_font_sizes/font_size = 110
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Prompt" type="Label" parent="."]
+visible = false
+offset_left = 460.0
+offset_top = 580.0
+offset_right = 1460.0
+offset_bottom = 660.0
+mouse_filter = 2
+theme = ExtResource("3_theme")
+theme_override_font_sizes/font_size = 44
+text = "按任意处退出"
+horizontal_alignment = 1
+vertical_alignment = 1
+script = ExtResource("4_prompt")
+
+[node name="LeftPanel" parent="." instance=ExtResource("2_panel")]
+offset_left = 60.0
+offset_top = 300.0
+offset_right = 420.0
+offset_bottom = 780.0
+
+[node name="RightPanel" parent="." instance=ExtResource("2_panel")]
+offset_left = 1500.0
+offset_top = 300.0
+offset_right = 1860.0
+offset_bottom = 780.0

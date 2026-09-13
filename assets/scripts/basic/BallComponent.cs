@@ -2,7 +2,8 @@ using Godot;
 using System;
 
 /// <summary>
-/// 所有行为组件的基类。它就是个 Node，平时挂在小球下面，用的就是 Godot 自带的组件能力。
+/// 所有行为组件的基类。它就是个 Node，平时挂在小球下面（蛋那种普通节点也用同一套，
+/// 见 `2003`：它挂在蛋的 `Area2D` 下面），用的就是 Godot 自带的组件能力。
 ///
 /// 目前只保留自描述这一部分：组件用 Id / Type 说明自己是谁，用 Requirements 声明前置组件。
 /// 装配（挂载、绑定、注册事件）交给之后的装配工厂处理，
@@ -10,7 +11,7 @@ using System;
 /// </summary>
 public abstract partial class BallComponent : Node
 {
-    /// <summary>唯一编号。约定：1xxx 移动，2xxx 攻击，3xxx 防御，4xxx 行为。</summary>
+    /// <summary>唯一编号。约定：1xxx 移动，2xxx 攻击，3xxx 防御，4xxx 行为，5xxx 形态。</summary>
     public abstract int Id { get; }
 
     /// <summary>类型名，形如 "attack.contact"。Json 和文档里用它指代这个组件。</summary>

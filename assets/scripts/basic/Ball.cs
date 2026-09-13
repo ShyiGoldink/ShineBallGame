@@ -7,9 +7,26 @@ using System;
 public partial class Ball : CharacterBody2D
 {
 	/// <summary>
+	/// 所有小球进场时都会加进这个节点组。想知道"场上现在有哪些球"，查这个组就行——
+	/// 分身、繁殖出来的球也会自动在里面，不用谁去维护名单。
+	/// </summary>
+	public const string BallsGroup = "balls";
+
+	/// <summary>
 	/// 小的事件系统，用于事件传递
 	/// </summary>
 	public BallEvent Events { get; } = new();
+
+	/// <summary>显示用的名字，装配时从 Json 里填。</summary>
+	public string DisplayName { get; set; } = string.Empty;
+
+	/// <summary>球的 id，就是数据文件夹名（比如 NormalBall），装配时从 Json 里填。
+	/// 注意别用节点名代替它：两颗一样的球撞名时引擎会给节点改名。</summary>
+	public string Id { get; set; } = string.Empty;
+
+	/// <summary>只读地看当前状态（面板、调试用）；改状态仍然只能走公开的切换方法。</summary>
+	public BallState State => _state;
+
 	private float _hp;
 	private float _maxHp = 100f;
 	private HealthBar _healthBar;
@@ -70,11 +87,19 @@ public partial class Ball : CharacterBody2D
 		}
 	}
 
+	public override void _Ready()
+	{
+		AddToGroup(BallsGroup);
+	}
+
 	/// <summary>当前状态。私有：外面只能通过公开的切换方法改，或者订阅状态变化事件。</summary>
 	private BallState _state = BallState.Spawn;
 
 	/// <summary>受控状态的剩余时间。</summary>
 	private float _controlLeft;
+
+	/// <summary>攻击状态的剩余时间。</summary>
+	private float _attackLeft;
 
 	/// <summary>
 	/// 让球进入受控状态，持续 duration 秒。
@@ -124,20 +149,67 @@ public partial class Ball : CharacterBody2D
 		}
 	}
 
-	public override void _PhysicsProcess(double delta)
+	/// <summary>
+	/// 让球进入攻击状态，持续 duration 秒，时间到了自动回到移动状态。
+	/// 攻击状态是给"有动作的攻击"用的：移动类组件在攻击状态里不驱动球（球会停住），
+	/// 动画、前摇、产蛋这些挂在这个状态的开始时刻上。
+	///
+	/// 只有移动中（或者本来就在攻击中，用来刷新时间）能进；
+	/// 登场、受控、死亡都不接受——攻击要不要在这些状态下强行插队，等玩法定了再说。
+	/// </summary>
+	public void BeginAttack(float duration)
 	{
-		if (_state != BallState.Controlled)
+		if (_state == BallState.Dead)
 		{
 			return;
 		}
 
-		_controlLeft -= (float)delta;
+		if (_state != BallState.Move && _state != BallState.Attack)
+		{
+			return;
+		}
+
+		_attackLeft = duration;
+		ChangeState(BallState.Attack);
+	}
+
+	public override void _PhysicsProcess(double delta)
+	{
+		if (_state == BallState.Controlled)
+		{
+			TickControlled((float)delta);
+			return;
+		}
+
+		if (_state == BallState.Attack)
+		{
+			TickAttack((float)delta);
+		}
+	}
+
+	/// <summary>受控计时：时间走完自动回到移动状态。</summary>
+	private void TickControlled(float delta)
+	{
+		_controlLeft -= delta;
 		if (_controlLeft > 0f)
 		{
 			return;
 		}
 
 		_controlLeft = 0f;
+		ChangeState(BallState.Move);
+	}
+
+	/// <summary>攻击计时：动作演完自动回到移动状态。</summary>
+	private void TickAttack(float delta)
+	{
+		_attackLeft -= delta;
+		if (_attackLeft > 0f)
+		{
+			return;
+		}
+
+		_attackLeft = 0f;
 		ChangeState(BallState.Move);
 	}
 
@@ -156,6 +228,13 @@ public partial class Ball : CharacterBody2D
 		}
 
 		_state = next;
+
+		// 死了就没有速度可言：面板显示、物理状态都干净
+		if (next == BallState.Dead)
+		{
+			Velocity = Vector2.Zero;
+		}
+
 		Events.Trigger(EventName.state_changed, next);
 	}
 

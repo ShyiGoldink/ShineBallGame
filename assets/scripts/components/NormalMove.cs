@@ -42,6 +42,10 @@ public partial class NormalMove : BallComponent
         // 状态一变球就通知我：只在移动状态里动，其它状态（登场、受控、攻击、死亡）都停住。
         // 优先级这里填 0 就行，状态事件没有先后之争；返回 true 是为了不挡住别的组件收听。
         _ball.Events.Register(EventName.state_changed, new EventResponseFunction { priority = 0, action = OnStateChanged });
+
+        // 先按当前状态对一次表：球挂上组件之前可能已经切过状态了（比如刚出生的蛋），
+        // 那次通知注册事件是收不到的。
+        _moving = _ball.State == BallState.Move;
     }
 
     private bool OnStateChanged(object arg)
@@ -65,12 +69,8 @@ public partial class NormalMove : BallComponent
             _started = true;
         }
 
-        var collision = _ball.MoveAndCollide(_ball.Velocity * (float)delta);
-        if (collision != null)
-        {
-            // 反射：速度相对碰撞法线对称，长度本来就不变，所以全程没有任何减速
-            _ball.Velocity = _ball.Velocity.Bounce(collision.GetNormal());
-        }
+        // 推进 + 反弹：跟受控状态下的控制类组件共用一套（BallMovement）
+        BallMovement.Drive(_ball, (float)delta);
     }
 
     /// <summary>Json 里写了方向就用写的，没写就随机给一个斜方向（两个分量都不会太小）。</summary>

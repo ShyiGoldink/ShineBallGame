@@ -1,0 +1,14 @@
+[remap]
+
+importer="spine.skel"
+type="SpineSkeletonFileResource"
+uid="uid://byi7cligwnr6a"
+path="res://.godot/imported/pulipuli.skel-721595faec713aad6d1a409f397dde92.spskel"
+
+[deps]
+
+source_file="res://assets/data/balls/pulipuli/resource/pulipuli.skel"
+dest_files=["res://.godot/imported/pulipuli.skel-721595faec713aad6d1a409f397dde92.spskel"]
+
+[params]
+

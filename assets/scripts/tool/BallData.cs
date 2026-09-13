@@ -8,6 +8,9 @@ public sealed class BallData
     public float Hp = 100f;
     public int Type = 1;
 
+    /// <summary>Spine 骨架的额外缩放（type=2 用）。想让角色在场上占 150px，就配 150 ÷ 角色在 Spine 里的高度。</summary>
+    public float SpineScale = 1f;
+
     /// <summary>自己的组件。键是组件编号，值是参数。</summary>
     public Godot.Collections.Dictionary SelfComponents = new();
 
@@ -34,6 +37,7 @@ public sealed class BallData
             Name = JsonTool.Get(file, "name", ballId),
             Hp = JsonTool.Get(file, "hp", 100f),
             Type = JsonTool.Get(file, "type", 1),
+            SpineScale = JsonTool.Get(file, "spine_scale", 1f),
             SelfComponents = JsonTool.Get(file, "selfcomponents", new Godot.Collections.Dictionary()),
             EnemyComponents = JsonTool.Get(file, "enemycomponents", new Godot.Collections.Dictionary()),
         };

@@ -1,0 +1,16 @@
+[remap]
+
+importer="spine.atlas"
+type="SpineAtlasResource"
+uid="uid://cxnb06vbarm4p"
+path="res://.godot/imported/pulipuli.atlas-3ccf23972f14ac53b860a3790f8dfc57.spatlas"
+
+[deps]
+
+source_file="res://assets/data/balls/pulipuli/resource/pulipuli.atlas"
+dest_files=["res://.godot/imported/pulipuli.atlas-3ccf23972f14ac53b860a3790f8dfc57.spatlas"]
+
+[params]
+
+normal_map_prefix="n"
+specular_map_prefix="s"
