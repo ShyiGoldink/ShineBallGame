@@ -128,6 +128,10 @@ public partial class Shift : BallComponent
         _effectLeft = Duration;
         _tickLeft = 0f;
 
+        // 撞上就"把壳收掉"：缩放设成 0 就等于看不见了。
+        // 注意别在这里 QueueFree——效果还要靠这个节点跑 5 秒（它得活着才能继续跳伤）。
+        _egg.Scale = Vector2.Zero;
+
         // 切成受控状态：对面挂着控制类组件就由那边接手移动（减速），没挂就是定身
         _target.BeControlled(Duration, ControlRepeat.Reset);
 

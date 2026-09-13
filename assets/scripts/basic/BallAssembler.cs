@@ -112,6 +112,15 @@ public static class BallAssembler
                 });
                 break;
 
+            case ConditionalImmune immune:
+                // 条件性无敌：优先级可配（默认最高 1000），条件不满足时自己会放行
+                ball.Events.Register(EventName.take_damage, new EventResponseFunction
+                {
+                    priority = immune.Priority,
+                    action = immune.OnTakeDamage,
+                });
+                break;
+
 
             case NormalDamage damage:
                 // 受伤链的最后一环：挂到"受伤"事件上，按优先级排进链里

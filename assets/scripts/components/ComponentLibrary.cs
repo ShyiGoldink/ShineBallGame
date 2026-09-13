@@ -18,6 +18,8 @@ public static class ComponentLibrary
                 return new EggAttack();
             case 2003:
                 return new Shift();
+            case 3001:
+                return new ConditionalImmune();
             case 4001:
                 return new NormalDamage();
             case 4002:

@@ -27,6 +27,9 @@ public partial class EggAttack : BallComponent
     /// <summary>蛋上挂哪个组件（组件编号）。</summary>
     public int EggId;
 
+    /// <summary>蛋的出生位置：以球心为原点往下挪这么多像素（球半径是 75，所以蛋正好落在球底）。</summary>
+    private static readonly Vector2 EggSpawnOffset = new Vector2(0f, 75f);
+
     private Ball _ball;
     private float _cdLeft;
     private float _windupLeft;
@@ -130,7 +133,7 @@ public partial class EggAttack : BallComponent
             return;
         }
 
-        var egg = BallAssembler.BuildEgg(_ball.Position, _ball.Group, EggId);
+        var egg = BallAssembler.BuildEgg(_ball.Position + EggSpawnOffset, _ball.Group, EggId);
         if (egg == null)
         {
             return;

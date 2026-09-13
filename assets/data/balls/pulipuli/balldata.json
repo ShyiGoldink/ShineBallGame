@@ -4,6 +4,7 @@
   "type": 2,
   "spine_scale": 0.53,
   "selfcomponents": {
+    "3001": {},
     "2002": { "cd": 8, "windup": 2, "attack_time": 5.5, "egg_id": 2003 },
     "1001": { "speed": 750 },
     "4001": {}

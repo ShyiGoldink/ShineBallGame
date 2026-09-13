@@ -73,6 +73,7 @@ mouse_filter = 2
 color = Color(0.22, 0.26, 0.36, 1)
 
 [node name="Countdown" type="Label" parent="."]
+z_index = 10
 offset_left = 760.0
 offset_top = 320.0
 offset_right = 1160.0
@@ -85,6 +86,7 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="Result" type="Label" parent="."]
+z_index = 10
 visible = false
 offset_left = 460.0
 offset_top = 400.0
@@ -97,6 +99,7 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="Prompt" type="Label" parent="."]
+z_index = 10
 visible = false
 offset_left = 460.0
 offset_top = 580.0
@@ -111,12 +114,14 @@ vertical_alignment = 1
 script = ExtResource("4_prompt")
 
 [node name="LeftPanel" parent="." instance=ExtResource("2_panel")]
+z_index = 10
 offset_left = 60.0
 offset_top = 300.0
 offset_right = 420.0
 offset_bottom = 780.0
 
 [node name="RightPanel" parent="." instance=ExtResource("2_panel")]
+z_index = 10
 offset_left = 1500.0
 offset_top = 300.0
 offset_right = 1860.0
