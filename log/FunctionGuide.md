@@ -53,7 +53,8 @@ enemy.TakeDamage(new DamageEvent(enemy, 伤害值, "attack.collision", 自己));
 
 1. `index.tscn` 起来，`IndexManager` 管两个页面：`Index`（主菜单）和 `Select`（选球）。
 2. 选球页左右各一个 `BallPicker`，各自选一个球、各自确认；双方都确认后"开始游戏"才可点。
-3. 点开始 → `GameManager.StartGame(玩家1的球id, 玩家2的球id)` 记下选择并切到 `game.tscn`。
+3. 同一个页面的中下方是 `ScenePicker`（扫 `user://scenes/`），点中的就是这一局的场地——场地是两个人的共同环境，所以只选一次、不做"各自确认"，默认第一个。
+4. 点开始 → `GameManager.StartGame(球1, 球2, 场地id)` 记下选择并切到 `game.tscn`。
 4. `Game` 从 `GameManager` 拿两个 id，用 `BallAssembler` 装配两颗球，摆到左右出生点。
 5. 战前互挂：A 的 `enemycomponents` 挂到 B 身上，B 的 `enemycomponents` 挂到 A 身上。
 6. 倒计时 3 秒（这期间球是"登场"状态，不会动）→ 对每颗球调 `FinishSpawn()`，球进入"移动"状态开始跑。

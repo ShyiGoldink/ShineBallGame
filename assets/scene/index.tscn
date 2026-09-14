@@ -4,6 +4,7 @@
 [ext_resource type="Theme" path="res://assets/theme/ui_theme.tres" id="2_theme"]
 [ext_resource type="PackedScene" path="res://assets/scene/BallPicker.tscn" id="3_picker"]
 [ext_resource type="Script" path="res://assets/scripts/ui/SelectPage.cs" id="4_selectpage"]
+[ext_resource type="Script" path="res://assets/scripts/ui/ScenePicker.cs" id="5_scenepicker"]
 
 [node name="IndexManager" type="Control" unique_id=533954150]
 layout_mode = 3
@@ -105,6 +106,10 @@ text = "开始游戏"
 [node name="ToIndex" type="Button" parent="Select/Row/Center"]
 layout_mode = 2
 text = "返回"
+
+[node name="ScenePicker" type="PanelContainer" parent="Select/Row/Center"]
+layout_mode = 2
+script = ExtResource("5_scenepicker")
 
 [node name="RightPicker" parent="Select/Row" instance=ExtResource("3_picker")]
 layout_mode = 2

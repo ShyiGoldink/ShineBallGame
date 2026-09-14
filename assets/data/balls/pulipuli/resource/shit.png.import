@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://w80y22bqyha0"
-path="res://.godot/imported/avatar.png-2b127f9ff1359400b07a700270ac63ba.ctex"
+uid="uid://bw8wujj3tjpyg"
+path="res://.godot/imported/shit.png-1e6f1c9da7278dae7bf3ad5f6902ddcf.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://resources/avatar.png"
-dest_files=["res://.godot/imported/avatar.png-2b127f9ff1359400b07a700270ac63ba.ctex"]
+source_file="res://assets/data/balls/pulipuli/resource/shit.png"
+dest_files=["res://.godot/imported/shit.png-1e6f1c9da7278dae7bf3ad5f6902ddcf.ctex"]
 
 [params]
 

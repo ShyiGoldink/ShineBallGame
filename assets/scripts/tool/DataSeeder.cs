@@ -15,7 +15,6 @@ public static class DataSeeder
     {
         UserData.EnsureFolders();
         CopyMissing(DefaultRoot + "balls/", UserData.Balls);
-        CopyMissing(DefaultRoot + "scene/", UserData.Scene);
         CopyMissing(DefaultRoot + "scenes/", UserData.Scenes);
     }
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cwbukd6s2jfor"
-path="res://.godot/imported/shit.png-30ce537c80655d410d65cbefd3631f0b.ctex"
+uid="uid://br2m4ergrrxvk"
+path="res://.godot/imported/avatar.png-317c70ef7f90dd61f6ca4b7f0ee524e7.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://resources/shit.png"
-dest_files=["res://.godot/imported/shit.png-30ce537c80655d410d65cbefd3631f0b.ctex"]
+source_file="res://assets/data/scenes/basic/avatar.png"
+dest_files=["res://.godot/imported/avatar.png-317c70ef7f90dd61f6ca4b7f0ee524e7.ctex"]
 
 [params]
 

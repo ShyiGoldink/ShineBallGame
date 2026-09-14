@@ -9,12 +9,14 @@ public partial class SelectPage : Control
 {
     private BallPicker _left;
     private BallPicker _right;
+    private ScenePicker _scene;
     private Button _start;
 
     public override void _Ready()
     {
         _left = GetNodeOrNull<BallPicker>("Row/LeftPicker");
         _right = GetNodeOrNull<BallPicker>("Row/RightPicker");
+        _scene = GetNodeOrNull<ScenePicker>("Row/Center/ScenePicker");
         _start = GetNodeOrNull<Button>("Row/Center/StartGame");
 
         if (_start != null)
@@ -74,7 +76,7 @@ public partial class SelectPage : Control
 
     private void OnStartPressed()
     {
-        // 双方选的球交给单例，由它带进战斗场景
-        GameManager.Instance?.StartGame(_left?.SelectedId, _right?.SelectedId);
+        // 双方选的球 + 选中的场地交给单例，由它带进战斗场景
+        GameManager.Instance?.StartGame(_left?.SelectedId, _right?.SelectedId, _scene?.SelectedId);
     }
 }

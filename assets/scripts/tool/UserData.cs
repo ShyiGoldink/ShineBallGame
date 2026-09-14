@@ -10,9 +10,6 @@ public static class UserData
 {
     public const string Root = "user://";
 
-    /// <summary>场景参数：场地大小、墙、出生点之类，之后用。</summary>
-    public const string Scene = Root + "scene/";
-
     /// <summary>小球数据：一个球一个 Json 文件。</summary>
     public const string Balls = Root + "balls/";
 
@@ -23,7 +20,6 @@ public static class UserData
     public static void EnsureFolders()
     {
         Make(Root);
-        Make(Scene);
         Make(Balls);
         Make(Scenes);
     }

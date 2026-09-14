@@ -15,21 +15,26 @@ public partial class BallButton : Button
     /// <summary>把球的数据填进按钮。</summary>
     public void Setup(BallEntry entry)
     {
-        BallId = entry.Id;
+        Setup(entry.Id, entry.Name, entry.Avatar);
+    }
 
+    /// <summary>通用版本：id + 名字 + 头像。场地选择也复用它（省一个预制体）。</summary>
+    public void Setup(string id, string name, Texture2D avatar)
+    {
+        BallId = id;
         _avatar ??= GetNodeOrNull<TextureRect>("Avatar");
         _name ??= GetNodeOrNull<Label>("NameLabel");
 
         if (_avatar != null)
         {
-            _avatar.Texture = entry.Avatar;
+            _avatar.Texture = avatar;
         }
 
         if (_name != null)
         {
-            _name.Text = entry.Name;
+            _name.Text = name;
         }
 
-        TooltipText = entry.Name;
+        TooltipText = name;
     }
 }
