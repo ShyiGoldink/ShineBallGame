@@ -21,7 +21,7 @@ using System;
 /// </summary>
 public abstract partial class BallComponent : Node
 {
-    /// <summary>唯一编号。约定：1xxx 移动，2xxx 攻击，3xxx 防御，4xxx 行为，5xxx 形态。</summary>
+    /// <summary>唯一编号。约定：1xxx 移动，2xxx 攻击，3xxx 防御，4xxx 行为，5xxx 形态，6xxx 控制。</summary>
     public abstract int Id { get; }
 
     /// <summary>类型名，形如 "attack.contact"。Json 和文档里用它指代这个组件。</summary>

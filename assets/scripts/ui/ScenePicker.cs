@@ -1,4 +1,5 @@
 using Godot;
+using System.Collections.Generic;
 
 /// <summary>
 /// 场地选择：把 `user://scenes` 里扫到的场地铺成一排按钮（头像 + 名字），点一下换当前场地。
@@ -17,6 +18,9 @@ public partial class ScenePicker : PanelContainer
 
     private Label _status;
     private readonly ButtonGroup _group = new();
+
+    /// <summary>场地 id → 按钮。默认选中的那个也要按下去，不然界面上看起来一个都没选。</summary>
+    private readonly Dictionary<string, BallButton> _buttons = new();
 
     public override void _Ready()
     {
@@ -49,6 +53,7 @@ public partial class ScenePicker : PanelContainer
             button.ButtonGroup = _group;
             button.Setup(entry.Id, entry.Name, entry.Avatar);
             button.Pressed += () => Select(entry.Id);
+            _buttons[entry.Id] = button;
             row.AddChild(button);
         }
 
@@ -65,6 +70,12 @@ public partial class ScenePicker : PanelContainer
     public void Select(string sceneId)
     {
         SelectedId = sceneId;
+
+        // 按下状态跟着选中走：程序里选的（默认第一个）和手点出来的看起来要一样
+        if (_buttons.TryGetValue(sceneId, out var button))
+        {
+            button.ButtonPressed = true;
+        }
 
         if (_status != null)
         {

@@ -15,6 +15,12 @@ public partial class Game : Node
 	private bool _counting;
 	private bool _settled;
 
+	/// <summary>
+	/// 这局装配起来了没有。装配失败（没选球 / 没场地 / 球数据读不出来）时它一直是 false：
+	/// 那时候场上根本没有球，结算判定要是跑起来，就会把"这局没开成"显示成"打完了，平局"。
+	/// </summary>
+	private bool _matchReady;
+
 	public override void _Ready()
 	{
 		_countdown = GetNodeOrNull<Label>("Countdown");
@@ -74,6 +80,9 @@ public partial class Game : Node
 		GetNodeOrNull<BallDataPanel>("LeftPanel")?.Bind(ball1, "玩家 1");
 		GetNodeOrNull<BallDataPanel>("RightPanel")?.Bind(ball2, "玩家 2");
 
+		// 到这儿这局才算装配好了：只有它成立，后面的结算判定才有意义
+		_matchReady = true;
+
 		// 球这会儿还在登场状态，动不了，等倒计时结束再放出去
 		_counting = true;
 		ShowCountdown(CountdownSeconds);
@@ -87,7 +96,7 @@ public partial class Game : Node
 			return;
 		}
 
-		if (!_settled)
+		if (_matchReady && !_settled)
 		{
 			CheckSettled();
 		}

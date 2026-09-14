@@ -11,7 +11,7 @@ enemy.TakeDamage(new DamageEvent(enemy, 伤害值, "attack.collision", 自己));
 | 优先级 | 组件 | 干什么 | 阻塞？ |
 | --- | --- | --- | --- |
 | 1000 | `3001 defense.conditional_immune` | 在指定状态下挡掉整条链 | 是 |
-| 900 / 800 / 700 / 600 | 还没做（沉默 / 真伤 / 护盾 / 持续掉血） | 优先级占位已留好 | 按需要 |
+| 900 / 800 / 700 | 还没做（沉默 / 真伤 / 护盾） | 优先级占位已留好 | 按需要 |
 | 600 | `4002 behavior.poison` | 把球染紫一下，不改伤害 | 否 |
 | 500 | `4001 behavior.normal_damage` | 按 `Amount` 真的扣血 | 是（最后一环） |
 
@@ -69,7 +69,7 @@ enemy.TakeDamage(new DamageEvent(enemy, 伤害值, "attack.collision", 自己));
 | --- | --- |
 | `res://assets/data/...` | 仓库里的**默认数据**，只在新玩家第一次运行时补过去 |
 | `user://balls/<球id>/` | 运行时真正读的小球数据 |
-| `user://scene/` | 场景参数（暂时只有 arena.json，还没被读） |
+| `user://scenes/<场地id>/` | 场地数据（`scenedata.json` + `avatar.png`；墙和边框是预制体 `res://assets/scene/arenas/<场地id>.tscn`） |
 
 补数据在 `Bootstrap`（自动加载）里执行，规则是**只补缺、不覆盖**：目标已经存在的文件永远不动，新版本新增的文件会自动补上。
 
@@ -263,17 +263,13 @@ assets/data/balls/NormalBall/
 
 为什么留这个口子：个别球的判定比例可能不一样（龙比虫子占地大一点），或者运行中要改形状（成长、缩水、护盾期间判定变大）——后者改预制体根本做不到。
 
-**注意：装配时必须先复制形状再改。** 预制体里那个 `CircleShape2D` 是所有球共用的同一个资源（`resource_local_to_scene = false`），直接改半径会让场上一屏的球、乃至之后每个新球一起变。装配器的 `SetCircleRadius` 就是干这个的。
+**注意：装配时必须先复制形状再改。** 预制体里那个 `CircleShape2D` 是所有球共用的同一个资源（`resource_local_to_scene = false`），直接改半径会让场上一屏的球、乃至之后每个新球一起变。`BallLook.SetCircleRadius` 就是干这个的。
 
-#### 5002 look.spine（Spine 外观）
+#### Spine 外观（不是组件，没有编号）
 
-`type = 2` 的球由装配器自动挂上它（不用写进 Json）：在球的 `resource/` 里找 Spine 资源，然后跟着球的五个状态切动画。
+`type = 2` 的球由**外观层**自动处理（`BallLook.Apply` → `SpineLook`）：在球的 `resource/` 里找 Spine 资源，然后跟着球的五个状态切动画。**它不是组件**——Json 里写 `"5002": {}` 会报"没有编号为 5002 的组件"。
 
-| 参数 | 类型 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `scale` | 数字 | 1 | 骨架整体缩放，一般直接用 Json 里的 `spine_scale`，不用手写这个组件 |
-
-细节见「Spine 扩展」里的「type=2 的球怎么用 Spine」。
+显示多大由 `balldata.json` 的 `spine_scale` 决定，细节见「Spine 扩展」里的「type=2 的球怎么用 Spine」。
 
 ### 控制类
 
@@ -301,7 +297,7 @@ assets/data/balls/NormalBall/
 
 * 接管那一刻记下"原先的速度"当基准，撒手时还原，所以受控期间反复挨打也不会越减越慢（30% 再 30% 就成 9%）。
 * 静止的球（速度为 0，比如还没过登场倒计时）没什么可减的，接管了也不会动。
-* 一颗球上现在挂**两个**控制类组件的话，两个都会各驱动一次——球会跑得比预期快，别这么配（要支持"多个控制效果抢方向盘"得在球那边做个登记，还没做）。
+* 同一颗球挂**两个**控制类组件时，**每帧只有仲裁出来的那一个驱动球**（`BallControl.PickDriver`：先比类别优先级、同类别再比强度、最后按挂载顺序），弱的那条不会跟着一起推。但"接管那一刻压速度"还是每个控制类组件各做一次，所以两个减速会叠乘（0.3 × 0.3），别这么配。
 
 ## 组件基类 BallComponent
 
@@ -326,7 +322,7 @@ assets/data/balls/NormalBall/
 | --- | --- |
 | `Spawn` | 登场：刚上场，还没开始行动；开局就是它 |
 | `Move` | 移动：自己动的球，移动类组件只在这个状态驱动小球 |
-| `Controlled` | 受控：控制类组件只在这个状态响应输入（还没做控制组件） |
+| `Controlled` | 受控：控制类组件只在这个状态响应输入（见 `6001 control.slow`） |
 | `Attack` | 攻击：有动作的攻击走这里（见 2002）。移动类组件在这期间不驱动球，所以球会停住，时长由攻击组件定 |
 | `Dead` | 死亡：终点，不再接受任何状态切换 |
 
