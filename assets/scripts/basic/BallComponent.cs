@@ -34,9 +34,11 @@ public abstract partial class BallComponent : Node
     public virtual string Description => string.Empty;
 
     /// <summary>
-    /// 前置组件：没装配它，这个组件就跑不起来。写的是依赖，不是处理顺序。
-    /// 受伤和无敌现在都是独立的组件，彼此不互相依赖，
-    /// 它们只是在小球的事件链上处在不同的优先级。
+    /// 前置组件：没装配它，这个组件就跑不起来。**写组件的 `Type` 名**（比如 "defense.shield"），
+    /// 可以写好几个。装配时由装配器检查：球上没有、这一批里也没有，就不挂这个组件并报错。
+    ///
+    /// 写的是**依赖**，不是处理顺序——Json 里谁写在前面都一样（受伤和无敌就是典型：
+    /// 两者互相不依赖，只是在小球的事件链上处在不同的优先级）。
     /// </summary>
     public virtual string[] Requirements => Array.Empty<string>();
 

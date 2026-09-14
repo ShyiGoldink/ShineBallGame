@@ -63,6 +63,10 @@ public static class BallAssembler
     /// <summary>
     /// 把一组组件挂到球上。键是组件编号，值是参数；返回挂上了几个。
     ///
+    /// 分三步做：先全建出来填参数 → 检查前置组件（`Requirements`）并挂到球上 →
+    /// **都挂完了**才挨个调 `Bind`。这样"谁写在前面"不影响结果：依赖是依赖，不是顺序，
+    /// 组件在自己的 `Bind` 里按 `Type` 找前置组件时，球上已经挂齐了。
+    ///
     /// `configId` 是"哪颗球的 Json 配出了这些组件"：自己身上的是这颗球，
     /// 从 `enemycomponents` 挂过来的则是**配它的那颗球**——组件找素材、找音效时用它，
     /// 而不是用现在挂着的这颗（否则"我给你的攻击"会去你的包里找音效）。
@@ -74,8 +78,9 @@ public static class BallAssembler
             return 0;
         }
 
-        int attached = 0;
+        var batch = new List<BallComponent>();
 
+        // 第一步：全部建出来、读好参数（还没挂上去，所以还没有任何副作用）
         foreach (var key in components.Keys)
         {
             if (!int.TryParse(key.ToString(), out int id))
@@ -95,12 +100,91 @@ public static class BallAssembler
                 ? value.AsGodotDictionary()
                 : new Godot.Collections.Dictionary());
 
-            ball.AddChild(component);
-            component.Bind(ball, configId); // 组件自己接线；装配器不碰事件、不认类型
-            attached++;
+            batch.Add(component);
         }
 
-        return attached;
+        // 第二步：前置组件齐了的才挂上去（先挂，不接线）
+        var accepted = new List<BallComponent>();
+
+        foreach (var component in batch)
+        {
+            if (!RequirementsMet(ball, component, batch))
+            {
+                continue; // 缺前置组件：不挂（报错在检查里打过了）
+            }
+
+            ball.AddChild(component);
+            accepted.Add(component);
+        }
+
+        // 第三步：球上挂齐了才接线。组件在 Bind 里可以放心找兄弟组件——
+        // 找得到与否跟 Json 里的书写顺序无关（这一步是那次"护盾条写在护盾前面"踩出来的）。
+        foreach (var component in accepted)
+        {
+            component.Bind(ball, configId); // 组件自己接线；装配器不碰事件、不认类型
+        }
+
+        return accepted.Count;
+    }
+
+    /// <summary>
+    /// 前置组件齐了没有。`Requirements` 里写的是组件的 `Type` 名：
+    /// 球上已经挂着的算，**这一批里正准备挂的**也算（所以跟书写顺序无关）。
+    ///
+    /// 缺一个就不挂这个组件——它自己声明了"没有那个就跑不起来"，硬挂上去只会运行时报错。
+    ///
+    /// 注意：只认"这一刻这颗球上有什么"。跨球的依赖（比如自己身上某个组件依赖对面
+    /// `enemycomponents` 送来的组件）算不出来，因为两边是分两批挂的、后挂的那批更晚。
+    /// </summary>
+    private static bool RequirementsMet(Ball ball, BallComponent component, List<BallComponent> batch)
+    {
+        var requirements = component.Requirements;
+        if (requirements == null || requirements.Length == 0)
+        {
+            return true;
+        }
+
+        foreach (var requirement in requirements)
+        {
+            if (HasComponentType(ball, requirement) || HasComponentType(batch, requirement))
+            {
+                continue;
+            }
+
+            GD.PushError($"[装配] {component.Type} 需要前置组件 {requirement}，"
+                + $"{ball.Name} 上没有，这个组件不挂。");
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>球上现在有没有这种类型的组件。</summary>
+    private static bool HasComponentType(Ball ball, string type)
+    {
+        foreach (var child in ball.GetChildren())
+        {
+            if (child is BallComponent component && component.Type == type)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>这一批里有没有这种类型的组件（还没挂上去的那些也算）。</summary>
+    private static bool HasComponentType(List<BallComponent> batch, string type)
+    {
+        foreach (var component in batch)
+        {
+            if (component.Type == type)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

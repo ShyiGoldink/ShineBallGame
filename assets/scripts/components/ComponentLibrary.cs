@@ -18,12 +18,18 @@ public static class ComponentLibrary
                 return new EggAttack();
             case 3001:
                 return new ConditionalImmune();
+            case 3002:
+                return new Shield();
+            case 3003:
+                return new ShieldGauge();
             case 4001:
                 return new NormalDamage();
             case 4002:
                 return new Poison();
             case 4003:
                 return new StateSound();
+            case 4004:
+                return new PoisonDamage();
             case 5001:
                 return new CircleShape();
             case 6001:

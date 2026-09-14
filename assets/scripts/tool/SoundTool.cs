@@ -69,8 +69,12 @@ public static class SoundTool
     /// <summary>
     /// 在 owner 身上放一遍。没配置音效、文件找不到、owner 不在场景里，都安静地什么都不做。
     /// 同一个 owner 重复触发就重头放（不做叠加）。
+    ///
+    /// `pitch` 是播放音高（1 = 原样）：**小于 1 更低、更沉闷**，大于 1 更尖。
+    /// 同一个音效文件想做出"不一样的手感"（比如同一个撞击声，盾球听起来闷一点），就靠它，
+    /// 不用再准备第二份素材。
     /// </summary>
-    public static void PlayOnce(Node owner, string sound, string ballId)
+    public static void PlayOnce(Node owner, string sound, string ballId, float pitch = 1f)
     {
         if (owner == null || string.IsNullOrEmpty(sound))
         {
@@ -92,9 +96,10 @@ public static class SoundTool
         }
 
         player.Stream = stream;
+        player.PitchScale = pitch > 0f ? pitch : 1f; // 防呆：0 或负数会让引擎不播
         player.Play();
 
-        GD.Print($"[音效] 球[{ballId}] 播放 {sound}（{stream.GetLength():0.00} 秒）");
+        GD.Print($"[音效] 球[{ballId}] 播放 {sound}（{stream.GetLength():0.00} 秒，音高 {player.PitchScale:0.##}）");
     }
 
     /// <summary>按后缀挑引擎自带的加载器。</summary>

@@ -1,5 +1,6 @@
 using Godot;
 using System;
+using System.Collections.Generic;
 
 	/// <summary>
 	/// 这是基类小球
@@ -23,6 +24,13 @@ public partial class Ball : CharacterBody2D
 	/// <summary>球的 id，就是数据文件夹名（比如 NormalBall），装配时从 Json 里填。
 	/// 注意别用节点名代替它：两颗一样的球撞名时引擎会给节点改名。</summary>
 	public string Id { get; set; } = string.Empty;
+
+	/// <summary>
+	/// 要给面板看的读数。组件在装配时往里登记"标签 + 现算函数"，左右面板定时来拉。
+	/// 谁登记谁负责现算，面板不缓存、也不认识任何具体组件——加一种要显示的读数，
+	/// 面板一行都不用改。
+	/// </summary>
+	public List<BallReadout> Readouts { get; } = new();
 
 	/// <summary>只读地看当前状态（面板、调试用）；改状态仍然只能走公开的切换方法。</summary>
 	public BallState State => _state;

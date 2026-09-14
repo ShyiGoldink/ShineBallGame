@@ -13,10 +13,10 @@
 
 | 项 | 数 |
 | --- | --- |
-| C# 文件 | 46 个，约 3470 行 |
+| C# 文件 | 49 个，约 3780 行 |
 | 场景 | 7 个（`index` / `game` / `NormalBall` / `BallPicker` / `BallButton` / `BallDataPanel` / `arenas/basic`） |
-| 球 | 2 颗（`NormalBall` 贴图球、`pulipuli` Spine 球） |
-| 组件 | 9 个（1001 移动 / 2001 碰撞 / 2002 下蛋 / 3001 条件无敌 / 4001 受伤 / 4002 中毒染色 / 4003 进状态音效 / 5001 碰撞箱 / 6001 减速） |
+| 球 | 3 颗（`NormalBall` 贴图球、`pulipuli` Spine 球、`ShieldBall` 盾球） |
+| 组件 | 12 个（1001 移动 / 2001 碰撞 / 2002 下蛋 / 3001 条件无敌 / 3002 护盾 / 3003 护盾条 / 4001 受伤 / 4002 中毒染色 / 4003 进状态音效 / 4004 毒血 / 5001 碰撞箱 / 6001 减速） |
 | 蛋 | 1 种（`2003` 屎蛋，是 `Egg` 的子类，不是组件） |
 | 外部依赖 | Godot 4.7.1（带 C# 的自编译版）+ Spine GDExtension（`addons/spine-godot`） |
 
@@ -28,6 +28,7 @@
 | --- | --- | --- |
 | `assets/scripts/basic/Ball.cs` | 小球本体：血量、五个状态、受控/攻击的计时、事件总线入口 | 所有组件、装配器、面板 |
 | `assets/scripts/basic/BallEvent.cs` | 轻量事件总线：按优先级排、返回 false 阻塞 | `Ball.Events`，各组件注册 |
+| `assets/scripts/basic/BallReadout.cs` | 面板读数：标签 + 现算函数（组件登记，面板来拉） | `Ball.Readouts`、`BallDataPanel`、`3003` |
 | `assets/scripts/basic/BallComponent.cs` | 组件基类（自描述 + `Bind` 接线钩子） | 所有组件 |
 | `assets/scripts/basic/BallLook.cs` | **外观层**：贴图 / Spine / 碰撞圈 / 血条，唯一入口 | 装配器、`5001`、蛋 |
 | `assets/scripts/basic/SpineLook.cs` | Spine 那一层（很薄，全程 `Call` 字符串调用） | `BallLook` |
@@ -66,7 +67,7 @@
 2. **主界面**：`index.tscn` → `IndexManager` 把直接子节点当页面（`Index` / `Select`）。
 3. **选球**：`SelectPage._Ready` → `BallLibrary.LoadAll()` 扫 `user://balls/` → 左右两个 `BallPicker` 各铺一排 `BallButton`；双方确认后才放开"开始游戏"。
 4. **开局**：`GameManager.StartGame(id1, id2)` 记下选择 → 切 `game.tscn`。
-5. **装配**（`Game._Ready`）：`BallData.Load` 读配置 → `BallAssembler.Build` ×2：建球 → 按 `type` 换外观（贴图 / Spine）→ 按编号挂自己的组件 → `Wire` 接线 → `AddChild` → 互相把 `enemycomponents` 挂到对面身上。
+5. **装配**（`Game._Ready`）：`BallData.Load` 读配置 → `BallAssembler.Build` ×2：建球 → 按 `type` 换外观（贴图 / Spine）→ 按编号建自己的组件、查前置组件（`Requirements`）、全挂到球上，再挨个 `Bind` 接线 → `AddChild` → 互相把 `enemycomponents` 挂到对面身上。
 6. **倒计时 3 秒**：两颗球都在**登场**状态（`NormalMove` 不动手，Spine 播 idle）。
 7. **开打**：`FinishSpawn()` → 进**移动**状态 → `NormalMove` 开始驱动；球自己的 `_PhysicsProcess` 管的只有受控/攻击两个计时。
 8. **打起来**：`HitArea`（`Area2D`）检测到对方 → `TakeDamage(值)` → `BallEvent` 按优先级跑受伤链（无敌 1000 → 沉默 900 → 真伤 800 → 护盾 700 → 中毒染色 600 → 一般扣血 500，任何一环返回 false 就截断）。
@@ -109,12 +110,15 @@ basic(Ball) ──→ 只认识 BallEvent/BallState，不认识任何具体组�
 | 选球 / 开局 / 倒计时 / 结算 / 暂停 / 回主菜单 | ✅ 实机通过 | |
 | 五状态状态机 | ✅ 都在用 | 受控、攻击的计时在 `Ball` 里 |
 | 事件总线（优先级 + 阻塞） | ✅ 实机通过 | |
-| 组件（9 个，见组件总表） | ✅ 都跑过 | 移动 / 碰撞 / 下蛋 / 条件无敌 / 受伤 / 中毒染色 / 进状态音效 / 碰撞箱 / 减速 |
+| 组件（12 个，见组件总表） | ✅ 都跑过 | 移动 / 碰撞 / 下蛋 / 条件无敌 / 护盾 / 护盾条 / 受伤 / 中毒染色 / 进状态音效 / 毒血 / 碰撞箱 / 减速 |
+| 组件依赖（`Requirements`） | ✅ 实机通过 | 装配时按 `Type` 名检查，缺前置组件就不挂那个组件并报错；跟 Json 书写顺序无关 |
+| 面板自定义读数（`Ball.Readouts`） | ✅ 实机通过 | 组件登记"标签 + 现算函数"，面板每 0.1 秒现拉；`3003` 护盾条是现成例子 |
 | 外观：`type=1` 贴图 / `type=2` Spine | ✅ 实机通过 | Spine 按状态切动画，缺动画走兜底链 |
-| 音效 | ⚠️ 只接了 `2001` | `SoundTool` 通用，别的组件想用得自己调 |
+| 音效 | ⚠️ 只接了 `2001` / `4003` | `SoundTool` 通用（还支持 `pitch` 调音高：同一份素材能做沉闷版），别的组件想用得自己调 |
 | 控制（减速） | ✅ 实机通过 | 减速 = 受控状态下由 6001 接手驱动（30%） |
-| 防御类 | ⚠️ 只有 `3001` 条件无敌 | 护盾 / 真伤 / 沉默还只有优先级位 |
-| 伤害载荷 | ✅ `DamageEvent` | 带来源、可被中途改写（`Amount`）；扣血统一在 `4001`，并打 `[伤害]` 日志 |
+| 防御类 | ✅ `3001` 条件无敌、`3002` 护盾 | 真伤 / 沉默还只有优先级位 |
+| 毒无视护盾（`4004`） | ✅ 实机通过 | 攻击方写在自己的 `enemycomponents` 里；实测盾球挨它时护盾吸收 0、毒伤全进血 |
+| 伤害载荷 | ✅ `DamageEvent` | 带来源、可被中途改写（`Amount`）；扣血统一在 `4001` 并打 `[伤害]` 日志（例外：`4004` 毒血自己扣，为了让毒绕过护盾） |
 | 场地（`user://scenes` + `assets/scene/arenas/<id>.tscn`） | ✅ 实机通过 | 数据只管出生范围，墙和边框按 id 找同名预制体 |
 | `BallState.Attack` 的"动作" | ⚠️ 只有下蛋用 | 攻击状态本身已经可用 |
 | 蛋（`2003`） | ✅ 实机通过 | 普通节点（不是球）：不进 `balls` 组、不参与胜负；参数只能改组件默认值 |
@@ -164,7 +168,7 @@ basic(Ball) ──→ 只认识 BallEvent/BallState，不认识任何具体组�
   * `Original` 只读 → 按原始伤害算的组件（护盾）有依据。
   * `Source` / `SourceId` / `SourceType` → 能区分"谁打的、哪种攻击"（蛋的伤害记在下蛋那颗球头上）。
   * `TakeDamage` 返回 `true/false` → 调用方知道"这次有没有被挡下来"。
-* **还剩**：3xxx 里除了 `3001` 之外的组件（护盾/真伤/沉默）还没做，但**位置已经留好了**（`DamagePriority` 里的 700/800/900）。
+* **还剩**：3xxx 里除了 `3001`/`3002` 之外的组件（真伤/沉默）还没做，但**位置已经留好了**（`DamagePriority` 里的 800/900）。
 
 ### 7. 控制类组件不能共存（✅ 已按你的思路处理）
 
@@ -237,12 +241,26 @@ basic(Ball) ──→ 只认识 BallEvent/BallState，不认识任何具体组�
 * 目前工作区里是最近这批（伤害事件、球尺寸、音效、血条等），**审计前先提交一次**，这样你改的时候有基线可比。
 * `addons/`（53MB Spine 二进制）一直没入库，等你定：全提交 / 只留 windows 版 / 不入库（不入库的话别人拉下来要自己放扩展，代码有兜底会回落贴图）。
 
+### 14. 组件依赖（`Requirements`）之前没人检查（✅ 已处理）
+
+* **由来**：`Requirements` 是"自描述"里唯一没人读的字段——写不写、写对写错，装配器都不看。
+  加 `3003` 护盾条（它得有护盾才有东西可显示）时，顺手把它补成了真机制。
+* **现在**：装配器按 `Type` 名检查——球上已经有、或者这一批里正准备挂的，就算满足；
+  缺一个就**报错并且不挂这个组件**（它自己声明了"没有那个就跑不起来"）。
+* **顺序上的坑（自己踩的）**：检查本来就跟书写顺序无关，但组件是在自己的 `Bind` 里按 `Type`
+  去球上找前置组件的——那会儿球上只挂了"排在前面"的那些，于是把 `3003` 写在 `3002` 前面就找不到。
+  现在装配改成"这一批**先全挂到球上**、再挨个 `Bind`"，`Bind` 里找兄弟组件才真的跟顺序无关。
+* **还没管**：跨球的依赖（自己身上的组件依赖对面 `enemycomponents` 送来的组件）——两边分两批挂，
+  后挂的那批更晚，现在算不出来。
+* **顺带验的**：护盾条登记的是"现算函数"而不是当时的值，所以哪怕它的 `Bind` 跑在护盾的 `Bind`
+  前面（那一刻盾量还是 0），面板拉到的也是真值——这就是读数表"现问现取"的意义。
+
 ## 八、快速用法（细节看 `FunctionGuide.md`）
 
 | 想干什么 | 怎么做 |
 | --- | --- |
 | 加一颗球 | 建 `assets/data/balls/<id>/` → 写 `balldata.json` → 放 `resource/avatar.png`（Spine 球再放 atlas+骨架）→ 跑一次让补数据复制 |
-| 加一个组件 | `components/` 下写类（**文件名 = 类名**）→ 接线写在 `Bind` 里（注册事件、连信号、改形状）→ `ComponentLibrary` 加一行。**装配器不用动** |
+| 加一个组件 | `components/` 下写类（**文件名 = 类名**）→ 有前置组件就在 `Requirements` 里写它的 `Type` 名 → 接线写在 `Bind` 里（注册事件、连信号、改形状）→ `ComponentLibrary` 加一行。**装配器不用动** |
 | 加一种蛋 | `eggs/` 下写 `Egg` 的子类（覆盖 `OnHit`）→ `EggLibrary` 加一行 → 球的 `2002.egg_id` 填编号 |
 | 编译 | `NUGET_PACKAGES=C:\Users\24807\.nuget\packages` 后 `dotnet build ShineBallGame.csproj`（编辑器的构建按钮不可用） |
 | 跑一局看日志 | `godot.windows.editor.x86_64.mono.console.exe --headless --path D:\shine-ball-game res://assets/scene/index.tscn --fixed-fps 60 --quit-after N`（`--fixed-fps` 必须加，否则倒计时/周期逻辑推不动） |
@@ -257,3 +275,5 @@ basic(Ball) ──→ 只认识 BallEvent/BallState，不认识任何具体组�
 4. ~~**控制组件抢方向盘**~~ —— ✅ 已做（`BallControl.PickDriver`，见自查第 7 条）。
 5. ~~**场景选择界面**~~ —— ✅ 已做（`ScenePicker` + `user://scenes`，见自查第 11 条）。
 6. **蛋的到期消失**——没人碰过的蛋会一直躺着，要不要加"到期自动消失"。
+7. **回盾的机制**——`3002` 的 `regen` 是恒定速率，跟对手的伤害频率一比就是条硬线（实测回盾 12 → 盾球赢 3/9，14 → 4/6），
+   想"势均力敌但不脆"得换成"破盾后隔 N 秒才开始回"这类机制，见 `FunctionGuide` 的 `3002` 一节。

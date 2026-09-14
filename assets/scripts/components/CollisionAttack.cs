@@ -22,6 +22,9 @@ public partial class CollisionAttack : BallComponent
     /// </summary>
     public string Sound = string.Empty;
 
+    /// <summary>音效的播放音高：1 = 原样，小于 1 更低沉（盾球的撞击声用 0.7 压闷一点）。</summary>
+    public float Pitch = 1f;
+
     ///<summary>group，代表小球的来自哪里，由工厂填</summary>///
     public int Group = 0; 
 
@@ -75,6 +78,7 @@ public partial class CollisionAttack : BallComponent
     {
         Damage = JsonTool.GetValue(parameters, "damage", Damage);
         Sound = JsonTool.GetValue(parameters, "sound", Sound);
+        Pitch = JsonTool.GetValue(parameters, "pitch", Pitch);
     }
 
     /// <summary>碰撞处理：给对方造成伤害。每次接触只触发一次，离开后再次接触才会再触发。</summary>
@@ -100,6 +104,6 @@ public partial class CollisionAttack : BallComponent
         // 音效跟着"这一下打出去"走：放到扣血之后，前面那些不算数的碰撞都不会响
         // 音效按"配我这个组件的那颗球"的包去找——攻击可以当礼物送给对面，
         // 那种情况下音效还是应该在送礼物那颗球自己的 resource 里
-        SoundTool.PlayOnce(this, Sound, _configId ?? _ball?.Id);
+        SoundTool.PlayOnce(this, Sound, _configId ?? _ball?.Id, Pitch);
     }
 }

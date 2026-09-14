@@ -1,0 +1,13 @@
+{
+  "name": "盾球",
+  "hp": 700,
+  "type": 1,
+  "selfcomponents": {
+    "1001": { "speed": 620 },
+    "2001": { "damage": 60, "sound": "hit", "pitch": 0.7 },
+    "3002": { "amount": 400, "regen": 13 },
+    "3003": {},
+    "4001": {}
+  },
+  "enemycomponents": {}
+}
