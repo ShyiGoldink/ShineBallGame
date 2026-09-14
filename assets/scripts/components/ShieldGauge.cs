@@ -27,6 +27,9 @@ public partial class ShieldGauge : BallComponent
     /// <summary>前置组件：没有护盾，这一行就没有东西可显示。</summary>
     public override string[] Requirements => new[] { ShieldType };
 
+    private Ball _ball;
+    private Shield _shield;
+
     /// <summary>
     /// 装配时接线：在球身上找到护盾组件，然后把"护盾量"登记到球的读数表里。
     /// 登记的是**现算函数**，不是当前值——面板每次刷新现问，所以显示永远不过期。
@@ -48,10 +51,31 @@ public partial class ShieldGauge : BallComponent
             return;
         }
 
+        _ball = ball;
+        _shield = shield;
+
+        // 两处显示：面板上一行数 + 球身上那根条（条的位置和显隐归外观层管）
         ball.Readouts.Add(new BallReadout(DisplayName, () => $"{shield.Left:0} / {shield.Max:0}"));
+        BallLook.PlaceShieldBar(ball);
+        PushToBar(); // 先摆一次，别等第一帧
+
         // 这里**不要**把当前值读出来打日志：同一个球上，护盾组件的 Bind 可能还没跑
         // （取决于 Json 里的书写顺序），这一刻的值还不是最终值。面板拉到的是真值。
-        GD.Print($"[{Type}] {ball.Name} 的护盾量登记到面板");
+        GD.Print($"[{Type}] {ball.Name} 的护盾量登记到面板和护盾条");
+    }
+
+    /// <summary>每帧把盾量推给球身上的条：面板 10Hz 轮询够用，条得跟手一点。</summary>
+    public override void _Process(double delta)
+    {
+        PushToBar();
+    }
+
+    private void PushToBar()
+    {
+        if (_ball != null && _shield != null)
+        {
+            BallLook.SetShield(_ball, _shield.Left, _shield.Max);
+        }
     }
 
     /// <summary>按 `Type` 名在球身上找护盾组件——依赖声明的就是这个名字。</summary>

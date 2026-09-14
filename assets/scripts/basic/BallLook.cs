@@ -18,6 +18,17 @@ public static class BallLook
     /// <summary>命中圈 / 碰撞圈的默认比例。只给了碰撞圈时，命中圈按这个比例跟上。</summary>
     public const float HitRadiusScale = 1.2f;
 
+    /// <summary>血条 / 护盾条固定宽度的一半（宽 160）。</summary>
+    private const float BarHalfWidth = 80f;
+
+    /// <summary>球底到血条的间隙、血条高度。</summary>
+    private const float HealthBarGap = 10f;
+    private const float HealthBarHeight = 14f;
+
+    /// <summary>血条下沿到护盾条的间隙、护盾条高度（比血条细）。</summary>
+    private const float ShieldBarGap = 4f;
+    private const float ShieldBarHeight = 8f;
+
     private const string BodyShapePath = "Shape";
     private const string HitShapePath = "HitArea/Shape";
 
@@ -89,20 +100,52 @@ public static class BallLook
             return;
         }
 
-        float radius = 50f; // 拿不到形状时的兜底
-        if (ball.GetNodeOrNull<CollisionShape2D>(BodyShapePath)?.Shape is CircleShape2D circle)
+        float radius = BodyRadius(ball);
+
+        bar.OffsetLeft = -BarHalfWidth;
+        bar.OffsetRight = BarHalfWidth;
+        bar.OffsetTop = radius + HealthBarGap;
+        bar.OffsetBottom = radius + HealthBarGap + HealthBarHeight;
+    }
+
+    /// <summary>
+    /// **开护盾条**：球身上那根显示护盾量的细条，摆在血条正下方。
+    /// 只有挂了护盾显示组件（`3003`）的球会调它，所以没护盾的球看不到这根条。
+    /// 位置跟血条一样按球的碰撞圈算，不写死数字。
+    /// </summary>
+    public static void PlaceShieldBar(Ball ball)
+    {
+        var bar = ball?.GetNodeOrNull<ProgressBar>("ShieldBar");
+        if (bar == null)
         {
-            radius = circle.Radius;
+            GD.PushError("[外观] 预制体里找不到 ShieldBar 节点，护盾条显示不出来。");
+            return;
         }
 
-        const float halfWidth = 80f; // 宽 160，固定
-        const float gap = 10f;
-        const float height = 14f;
+        float top = BodyRadius(ball) + HealthBarGap + HealthBarHeight + ShieldBarGap;
 
-        bar.OffsetLeft = -halfWidth;
-        bar.OffsetRight = halfWidth;
-        bar.OffsetTop = radius + gap;
-        bar.OffsetBottom = radius + gap + height;
+        bar.OffsetLeft = -BarHalfWidth;
+        bar.OffsetRight = BarHalfWidth;
+        bar.OffsetTop = top;
+        bar.OffsetBottom = top + ShieldBarHeight;
+        bar.Visible = true;
+    }
+
+    /// <summary>把护盾值推给球身上的护盾条；球上没有那根条就什么都不做。</summary>
+    public static void SetShield(Ball ball, float current, float max)
+    {
+        ball?.GetNodeOrNull<ShieldBar>("ShieldBar")?.SetShield(current, max);
+    }
+
+    /// <summary>球的碰撞圈半径——血条、护盾条都按它往下摆。</summary>
+    private static float BodyRadius(Ball ball)
+    {
+        if (ball?.GetNodeOrNull<CollisionShape2D>(BodyShapePath)?.Shape is CircleShape2D circle)
+        {
+            return circle.Radius;
+        }
+
+        return 50f; // 拿不到形状时的兜底
     }
 
     /// <summary>`type = 1`：用球自己目录里的 `resource/avatar.png`，缩到统一尺寸。</summary>

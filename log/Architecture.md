@@ -13,7 +13,7 @@
 
 | 项 | 数 |
 | --- | --- |
-| C# 文件 | 49 个，约 3780 行 |
+| C# 文件 | 51 个，约 3950 行 |
 | 场景 | 7 个（`index` / `game` / `NormalBall` / `BallPicker` / `BallButton` / `BallDataPanel` / `arenas/basic`） |
 | 球 | 3 颗（`NormalBall` 贴图球、`pulipuli` Spine 球、`ShieldBall` 盾球） |
 | 组件 | 12 个（1001 移动 / 2001 碰撞 / 2002 下蛋 / 3001 条件无敌 / 3002 护盾 / 3003 护盾条 / 4001 受伤 / 4002 中毒染色 / 4003 进状态音效 / 4004 毒血 / 5001 碰撞箱 / 6001 减速） |
@@ -52,7 +52,7 @@
 | `assets/scripts/tool/JsonTool.cs` | 通用 Json 读工具（带缓存、点号取子键） | 所有读 Json 的地方 |
 | `assets/scripts/tool/SoundTool.cs` | 读音频（走 `BallLibrary.Find`）、缓存、播一遍 | `2001` 撞击音、`4003` 进状态音 |
 | `assets/scripts/tool/Bootstrap.cs` | autoload：启动时补数据 | 引擎启动 |
-| `assets/scripts/ui/` | 界面：页面管理、选球、数据面板、血条、结算提示 | `index.tscn` / `game.tscn` |
+| `assets/scripts/ui/` | 界面：页面管理、选球、数据面板、血条、护盾条、结算提示 | `index.tscn` / `game.tscn` |
 | `assets/scene/*.tscn` | 场景与预制体（`NormalBall.tscn` 是所有球共用的预制体） | 引擎 |
 | `assets/data/balls/<球id>/` | 球的**默认数据**（`balldata.json` + `resource/`） | 被补数据复制到 `user://` |
 | `assets/data/scenes/<场地id>/` | 场地的**默认数据**（`scenedata.json` + `avatar.png`） | 被补数据复制到 `user://`；墙和边框是同名预制体 `assets/scene/arenas/<场地id>.tscn` |
@@ -113,6 +113,7 @@ basic(Ball) ──→ 只认识 BallEvent/BallState，不认识任何具体组�
 | 组件（12 个，见组件总表） | ✅ 都跑过 | 移动 / 碰撞 / 下蛋 / 条件无敌 / 护盾 / 护盾条 / 受伤 / 中毒染色 / 进状态音效 / 毒血 / 碰撞箱 / 减速 |
 | 组件依赖（`Requirements`） | ✅ 实机通过 | 装配时按 `Type` 名检查，缺前置组件就不挂那个组件并报错；跟 Json 书写顺序无关 |
 | 面板自定义读数（`Ball.Readouts`） | ✅ 实机通过 | 组件登记"标签 + 现算函数"，面板每 0.1 秒现拉；`3003` 护盾条是现成例子 |
+| 护盾条（球身上那根） | ✅ 实机通过 | `3003` 每帧推值；位置 / 显隐在 `BallLook`（外观唯一入口），青色 8 像素条摆在血条正下方 |
 | 外观：`type=1` 贴图 / `type=2` Spine | ✅ 实机通过 | Spine 按状态切动画，缺动画走兜底链 |
 | 音效 | ⚠️ 只接了 `2001` / `4003` | `SoundTool` 通用（还支持 `pitch` 调音高：同一份素材能做沉闷版），别的组件想用得自己调 |
 | 控制（减速） | ✅ 实机通过 | 减速 = 受控状态下由 6001 接手驱动（30%） |
