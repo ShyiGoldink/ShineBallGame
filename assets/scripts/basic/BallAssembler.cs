@@ -1,28 +1,32 @@
 using Godot;
+using System.Collections.Generic;
 
 /// <summary>
-/// 装配：读配置 → 生成小球 → 挂组件 → 摆到场上。
-/// 现在所有球都用同一个预制体（NormalBall.tscn），球体贴图在运行时按球自己的目录扫出来，
-/// 所以玩家自己往 balls 里加的新球也能显示。
+/// 装配中心：把"数据"变成"场上的一颗球"。这里只做三件事，而且**不认识任何具体组件**：
+///
+/// 1. `Build` —— 建球、摆外观（交给 `BallLook`）、挂组件、摆血条；
+/// 2. `AttachComponents` —— 按编号建组件、填参数、挂到球下面、调组件的 `Bind`；
+/// 3. `BuildEgg` —— 产一颗蛋（**蛋不是球**，见 `Egg` / `EggLibrary`）。
+///
+/// 为什么这里不认识组件：每个组件自己知道要接什么线（注册事件、连信号、改形状都写在它的
+/// `Bind` 里），所以**加组件不用动这个文件**。"编号 → 组件"的翻译表在 `ComponentLibrary`，
+/// "编号 → 蛋"在 `EggLibrary`。
 /// </summary>
 public static class BallAssembler
 {
     private const string BallScene = "res://assets/scene/NormalBall.tscn";
 
-    /// <summary>预制体里两个碰撞形状的节点路径。</summary>
-    private const string BodyShapePath = "Shape";
-    private const string HitShapePath = "HitArea/Shape";
-
-    /// <summary>预制体里命中圈 / 碰撞圈的默认比例（90 / 75）。只写了碰撞圈时按这个比例跟上。</summary>
-    private const float HitRadiusScale = 1.2f;
-
-    /// <summary>所有球在画面上的统一显示尺寸（像素，按素材长边算）。
-    /// 碰撞圈半径是它的一半（50，写在预制体里），命中圈再按 1.2 倍（60）——改这里记得一起改预制体。</summary>
-    private const float BallDisplaySize = 100f;
-
-    /// <summary>蛋的节点组。蛋不是球、不在 balls 组里，要单独找它们（比如结算时清场）。</summary>
+    /// <summary>蛋的节点组。蛋不是球、不在 balls 组里，要单独找（比如结算时清场）。</summary>
     public const string EggsGroup = "eggs";
 
+    /// <summary>
+    /// 同一种球 / 蛋的实例计数，用来给节点起名：`pulipuli#1`、`pulipuli#2`……
+    /// 不编号的话引擎会把重名节点改成 `@CharacterBody2D@42` 那种，日志里没法看。
+    /// 注意：名字只是给人和日志看的，**数据身份是 `Ball.Id`**（不带序号的那个）。
+    /// </summary>
+    private static readonly Dictionary<string, int> SerialByBase = new();
+
+    /// <summary>装配一颗球：数据 + 位置 + 阵营 → 一个还没进场景树的球节点。</summary>
     public static Ball Build(BallData data, Vector2 position, int group)
     {
         if (data == null)
@@ -38,26 +42,32 @@ public static class BallAssembler
         }
 
         var ball = scene.Instantiate<Ball>();
-        ball.Name = data.Id;
-        ball.Id = data.Id;
+        ball.Name = Numbered(data.Id); // 名字带序号，只给日志看
+        ball.Id = data.Id;             // id 才是数据身份（找素材、找音效都用它）
         ball.DisplayName = data.Name;
         ball.Position = position;
         ball.Group = group;
         ball.MaxHp = data.Hp;
         ball.Hp = data.Hp;
 
-        SetAppearance(ball, data);
-        int count = AttachComponents(ball, data.SelfComponents);
+        BallLook.Apply(ball, data); // 外观：type=2 走 Spine，其它走贴图；Spine 缺东西自动回落
+        int count = AttachComponents(ball, data.SelfComponents, data.Id);
 
-        // 血条得等所有组件挂完再摆——5001 可能刚刚改过球的碰撞圈，位置要按最终大小算
-        PlaceHealthBar(ball);
+        // 血条等所有组件挂完再摆：5001 可能刚改过碰撞圈，位置得按最终半径算
+        BallLook.PlaceHealthBar(ball);
 
-        GD.Print($"[装配] {data.Id}（{data.Name}）血量 {data.Hp}，自己的组件 {count} 个");
+        GD.Print($"[装配] {ball.Name}（{data.Name}）血量 {data.Hp}，自己的组件 {count} 个");
         return ball;
     }
 
-    /// <summary>把一组组件挂到球上。键是组件编号，值是参数。返回挂上了几个。</summary>
-    public static int AttachComponents(Ball ball, Godot.Collections.Dictionary components)
+    /// <summary>
+    /// 把一组组件挂到球上。键是组件编号，值是参数；返回挂上了几个。
+    ///
+    /// `configId` 是"哪颗球的 Json 配出了这些组件"：自己身上的是这颗球，
+    /// 从 `enemycomponents` 挂过来的则是**配它的那颗球**——组件找素材、找音效时用它，
+    /// 而不是用现在挂着的这颗（否则"我给你的攻击"会去你的包里找音效）。
+    /// </summary>
+    public static int AttachComponents(Ball ball, Godot.Collections.Dictionary components, string configId = null)
     {
         if (ball == null || components == null)
         {
@@ -86,257 +96,41 @@ public static class BallAssembler
                 : new Godot.Collections.Dictionary());
 
             ball.AddChild(component);
-            Wire(ball, component);
+            component.Bind(ball, configId); // 组件自己接线；装配器不碰事件、不认类型
             attached++;
         }
 
         return attached;
     }
 
-    /// <summary>把组件接到球上：该连信号的连信号，该注册事件的注册事件。</summary>
-    private static void Wire(Ball ball, BallComponent component)
-    {
-        switch (component)
-        {
-            case CollisionAttack attack:
-                // 阵营跟着球走：碰到同阵营的球不算敌人
-                attack.Group = ball.Group;
-                ConnectHitArea(ball, attack.OnBodyEntered);
-                break;
-
-            case Shift shift:
-                // 屎蛋：阵营跟着球走，检测圈也接上（撞到谁给谁挂减速）
-                shift.Group = ball.Group;
-                ConnectHitArea(ball, shift.OnBodyEntered);
-                break;
-
-            case Poison poison:
-                // 中毒：夹在护盾（700）和一般扣血（500）中间，不阻塞，只负责染色
-                ball.Events.Register(EventName.take_damage, new EventResponseFunction
-                {
-                    priority = DamagePriority.DamageOverTime,
-                    action = poison.OnTakeDamage,
-                });
-                break;
-
-            case ConditionalImmune immune:
-                // 条件性无敌：优先级可配（默认最高 1000），条件不满足时自己会放行
-                ball.Events.Register(EventName.take_damage, new EventResponseFunction
-                {
-                    priority = immune.Priority,
-                    action = immune.OnTakeDamage,
-                });
-                break;
-
-
-            case NormalDamage damage:
-                // 受伤链的最后一环：挂到"受伤"事件上，按优先级排进链里
-                ball.Events.Register(EventName.take_damage, new EventResponseFunction
-                {
-                    priority = DamagePriority.NormalDamage,
-                    action = damage.OnTakeDamage,
-                });
-                break;
-
-            case CircleShape shape:
-                // 碰撞箱：把球上的圈改成组件要的半径（不写参数就保持预制体的默认圆）
-                WireCircleShape(ball, shape);
-                break;
-        }
-    }
-
     /// <summary>
-    /// 圆形碰撞箱：按组件里的半径改球上的碰撞圈和命中圈。
-    /// 两个参数都没写就直接返回——默认圆留在预制体里，这里不该动它。
-    /// </summary>
-    private static void WireCircleShape(Ball ball, CircleShape component)
-    {
-        if (component.Radius <= 0f && component.HitRadius <= 0f)
-        {
-            return;
-        }
-
-        if (component.Radius > 0f)
-        {
-            SetCircleRadius(ball, BodyShapePath, component.Radius, "碰撞圈");
-        }
-
-        if (component.HitRadius > 0f)
-        {
-            SetCircleRadius(ball, HitShapePath, component.HitRadius, "命中圈");
-        }
-        else if (component.Radius > 0f)
-        {
-            // 只写了碰撞圈：命中圈按预制体里的比例跟上。检测圈必须比球体稍大，
-            // 只改碰撞圈会让两个圈的比例走样（等大就永远差一点点触发不了碰撞）。
-            SetCircleRadius(ball, HitShapePath, component.Radius * HitRadiusScale, "命中圈");
-        }
-    }
-
-    /// <summary>
-    /// 改一个碰撞圈的半径。
+    /// 产一颗蛋。**蛋不是球**：它就是个普通节点（`Area2D` + 一张图），
+    /// 长什么样、干什么，全交给 `EggLibrary` 里那个编号对应的蛋类。
     ///
-    /// 改之前必须先复制：预制体里那个 CircleShape2D 是所有球共用的同一个资源
-    /// （resource_local_to_scene = false），直接改半径会让场上一屏的球、乃至之后
-    /// 每个新球都跟着变。复制一份之后，这颗球才真的有自己的形状。
+    /// `ownerId` 是下蛋那颗球的 id：蛋用它找素材、也用它在伤害事件里记"谁下的蛋"。
     /// </summary>
-    private static void SetCircleRadius(Ball ball, string shapePath, float radius, string label)
+    public static Egg BuildEgg(Vector2 position, int group, int eggId, string ownerId)
     {
-        var node = ball.GetNodeOrNull<CollisionShape2D>(shapePath);
-        if (node == null)
+        var egg = EggLibrary.Create(eggId);
+        if (egg == null)
         {
-            GD.PushError($"[装配] 预制体里找不到{label}节点（{shapePath}），半径没改成功。");
-            return;
-        }
-
-        if (node.Shape is not CircleShape2D circle)
-        {
-            GD.PushError($"[装配] {label}不是圆形，shape.circle 改不了它。");
-            return;
-        }
-
-        circle = (CircleShape2D)circle.Duplicate(); // 复制成这颗球自己的形状
-        circle.Radius = radius;
-        node.Shape = circle;
-
-        GD.Print($"[装配] {ball.Name} 的{label}半径改成 {radius:0.#}");
-    }
-
-    /// <summary>
-    /// 产一颗蛋。**蛋不是球**：它就是一个普通节点——一个 `Area2D` 当检测圈，
-    /// 长什么样、多大、干什么，全交给 `eggComponentId` 指的那个组件自己搭（见 `2003`）。
-    ///
-    /// 因为不是球，它不进 `balls` 组、不参与胜负判定、没有血量，也不是实体
-    /// （别人碰不到它，只能它碰到别人）。返回 null 表示组件编号不存在。
-    /// </summary>
-    public static Node2D BuildEgg(Vector2 position, int group, int componentId, string ownerId = null)
-    {
-        var component = ComponentLibrary.Create(componentId);
-        if (component == null)
-        {
-            GD.PushError($"[装配] 蛋要挂的组件 {componentId} 不存在，这颗蛋没生成。");
+            GD.PushError($"[装配] 没有编号为 {eggId} 的蛋，这颗蛋没生成。");
             return null;
         }
 
-        var egg = new Area2D
-        {
-            Name = $"Egg{componentId}",
-            Position = position,
-            Monitoring = true,
-            CollisionLayer = 0, // 它不是实体：别人不用感知它
-            CollisionMask = 1,  // 只去感知球（球在层 1 上）
-        };
+        egg.Name = Numbered($"Egg{eggId}");
+        egg.Position = position;
+        egg.SetOwner(group, ownerId); // 搭好图和检测圈（必须在进场景树之前）
 
-        egg.AddToGroup(EggsGroup);
-
-        // 空壳在这里搭好：一个图的槽 + 一个检测圈。
-        // 必须在进场景树之前搭——进了树之后在组件 _Ready 里 add_child，引擎会以
-        // "父节点正在建子节点" 为由拒绝（这个坑踩过两次了）。
-        // 换成什么图、圈多大，由组件在自己 _Ready 里填（见 2003）。
-        egg.AddChild(new Sprite2D { Name = "Sprite" });
-        egg.AddChild(new CollisionShape2D
-        {
-            Name = "Shape",
-            Shape = new CircleShape2D { Radius = 1f },
-        });
-
-        // 阵营得让组件知道，不然蛋会对自己人开火；owner 是为了让伤害记得住"谁下的蛋"
-        component.ApplyParams(new Godot.Collections.Dictionary
-        {
-            { "group", group },
-            { "owner", ownerId ?? string.Empty },
-        });
-
-        egg.AddChild(component);
         return egg;
     }
 
-    /// <summary>把球身上的碰撞检测接上：有东西进圈就调传进来的处理函数。</summary>
-    private static void ConnectHitArea(Ball ball, Area2D.BodyEnteredEventHandler handler)
+    /// <summary>给同一种东西起带序号的名字。</summary>
+    private static string Numbered(string baseName)
     {
-        var hitArea = ball.GetNodeOrNull<Area2D>("HitArea");
-        if (hitArea == null)
-        {
-            GD.PushError("[装配] 预制体里找不到 HitArea，攻击接不上，这个球打不到人。");
-            return;
-        }
-
-        hitArea.BodyEntered += handler;
-    }
-
-    /// <summary>外观：`type` 1（或没写）用贴图，2 用 Spine；Spine 凑不齐就回落到贴图。</summary>
-    private static void SetAppearance(Ball ball, BallData data)
-    {
-        if (data.Type == 2 && SetSpineAppearance(ball, data))
-        {
-            return;
-        }
-
-        SetBodyTexture(ball, data.Id);
-    }
-
-    /// <summary>
-    /// type=2：交给 Spine 显示。成功返回 true；资源不齐、引擎里没有 SpineSprite 之类
-    /// 都返回 false，让调用方回落到贴图（新球缺素材时不会变成一团黑）。
-    /// </summary>
-    private static bool SetSpineAppearance(Ball ball, BallData data)
-    {
-        var look = new SpineLook { Scale = data.SpineScale };
-        if (!look.Prepare(ball))
-        {
-            return false;
-        }
-
-        ball.AddChild(look);
-        return true;
-    }
-
-    /// <summary>
-    /// 摆血条：**大小固定**（所有球都是 160×14，跟预制体里一致），只有位置跟着球走——
-    /// 条挂在球底下方 10 像素，所以 100px 的球和 150px 的球都不会被自己的血条盖住。
-    /// </summary>
-    private static void PlaceHealthBar(Ball ball)
-    {
-        var bar = ball.GetNodeOrNull<ProgressBar>("HealthBar");
-        if (bar == null)
-        {
-            return;
-        }
-
-        float radius = 50f; // 拿不到形状时的兜底
-        if (ball.GetNodeOrNull<CollisionShape2D>(BodyShapePath)?.Shape is CircleShape2D circle)
-        {
-            radius = circle.Radius;
-        }
-
-        const float halfWidth = 80f; // 宽 160，固定
-        const float gap = 10f;
-        const float height = 14f;
-
-        bar.OffsetLeft = -halfWidth;
-        bar.OffsetRight = halfWidth;
-        bar.OffsetTop = radius + gap;
-        bar.OffsetBottom = radius + gap + height;
-    }
-
-    /// <summary>球体贴图按球自己的目录扫出来。</summary>
-    private static void SetBodyTexture(Ball ball, string ballId)
-    {
-        var body = ball.GetNodeOrNull<Sprite2D>("Body");
-        if (body == null)
-        {
-            GD.PushError("[装配] 预制体里找不到 Body 节点，贴图没换。");
-            return;
-        }
-
-        var texture = BallLibrary.LoadAvatar(UserData.Balls + ballId + "/resource/avatar.png");
-        if (texture != null)
-        {
-            body.Texture = texture;
-
-            // 按长边缩到统一显示尺寸：素材画多大都行，场上所有球一样大
-            float longest = Mathf.Max(texture.GetWidth(), texture.GetHeight());
-            body.Scale = Vector2.One * (BallDisplaySize / longest);
-        }
+        SerialByBase.TryGetValue(baseName, out int serial);
+        serial++;
+        SerialByBase[baseName] = serial;
+        return $"{baseName}#{serial}";
     }
 }

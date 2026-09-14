@@ -28,4 +28,18 @@ public partial class CircleShape : BallComponent
         Radius = JsonTool.GetValue(parameters, "radius", Radius);
         HitRadius = JsonTool.GetValue(parameters, "hit_radius", HitRadius);
     }
+
+    /// <summary>
+    /// 装配时把半径写上去。两个参数都没写就什么都不做——默认圆留在预制体里。
+    /// 具体怎么改（以及"改前先复制形状"那件事）都在 `BallLook` 里，碰撞圈只有那一个入口。
+    /// </summary>
+    public override void Bind(Ball ball, string configId)
+    {
+        if (ball == null || (Radius <= 0f && HitRadius <= 0f))
+        {
+            return;
+        }
+
+        BallLook.SetCircle(ball, Radius, HitRadius);
+    }
 }

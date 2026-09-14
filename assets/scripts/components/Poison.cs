@@ -28,13 +28,21 @@ public partial class Poison : BallComponent
         TintTime = JsonTool.GetValue(parameters, "tint_time", TintTime);
     }
 
-    public override void _Ready()
+    /// <summary>装配时接线：拿到球、把自己注册进受伤链（优先级 600，夹在护盾和普通扣血中间）。</summary>
+    public override void Bind(Ball ball, string configId)
     {
-        _ball = GetParent() as Ball;
-        if (_ball == null)
+        _ball = ball;
+        if (ball == null)
         {
             GD.PushError($"[{Type}] 组件没挂在球下面，染不了色。");
+            return;
         }
+
+        ball.Events.Register(EventName.take_damage, new EventResponseFunction
+        {
+            priority = DamagePriority.DamageOverTime,
+            action = OnTakeDamage,
+        });
     }
 
     /// <summary>受伤链上的处理：染色 + 放行（不阻塞，后面的护盾/扣血照常走）。</summary>

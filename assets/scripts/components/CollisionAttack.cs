@@ -28,20 +28,39 @@ public partial class CollisionAttack : BallComponent
     private Ball _ball;
     private bool _alive = true;
 
-    public override void _Ready()
+    /// <summary>哪颗球的 Json 配出了我（从 enemycomponents 送人时，是**送出去的那颗球**）。</summary>
+    private string _configId;
+
+    /// <summary>
+    /// 装配时接线：阵营跟着**挂我的那颗球**走；把自己的处理函数接到球的检测圈上，
+    /// 状态变化也在这里订——死了就不再打人。
+    /// </summary>
+    public override void Bind(Ball ball, string configId)
     {
-        _ball = GetParent() as Ball;
-        if (_ball == null)
+        _ball = ball;
+        _configId = configId;
+        if (ball == null)
         {
             GD.PushError($"[{Type}] 组件没挂在球下面，没法判断生死。");
             return;
         }
 
+        Group = ball.Group;
+
+        var hitArea = ball.GetNodeOrNull<Area2D>("HitArea");
+        if (hitArea == null)
+        {
+            GD.PushError("[装配] 预制体里找不到 HitArea，这次碰撞攻击接不上。");
+        }
+        else
+        {
+            hitArea.BodyEntered += OnBodyEntered;
+        }
+
         // 状态一变球就通知我，死了就不再打人
         _ball.Events.Register(EventName.state_changed, new EventResponseFunction { priority = 0, action = OnStateChanged });
 
-        // 先按当前状态对一次表：球挂上组件之前可能已经切过状态了（比如刚出生的蛋），
-        // 那次通知注册事件是收不到的。
+        // 先按当前状态对一次表（球挂上组件之前可能已经切过状态了，那次通知收不到）
         _alive = _ball.State != BallState.Dead;
     }
 
@@ -79,6 +98,8 @@ public partial class CollisionAttack : BallComponent
         enemy.TakeDamage(new DamageEvent(enemy, Damage, Type, _ball));
 
         // 音效跟着"这一下打出去"走：放到扣血之后，前面那些不算数的碰撞都不会响
-        SoundTool.PlayOnce(this, Sound, _ball?.Id);
+        // 音效按"配我这个组件的那颗球"的包去找——攻击可以当礼物送给对面，
+        // 那种情况下音效还是应该在送礼物那颗球自己的 resource 里
+        SoundTool.PlayOnce(this, Sound, _configId ?? _ball?.Id);
     }
 }

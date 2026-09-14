@@ -1,76 +1,12 @@
-[gd_scene load_steps=7 format=3 uid="uid://ckfjux3rmndp3"]
+[gd_scene load_steps=5 format=3 uid="uid://ckfjux3rmndp3"]
 
 [ext_resource type="Script" path="res://assets/scripts/basic/Game.cs" id="1_game"]
 [ext_resource type="PackedScene" path="res://assets/scene/BallDataPanel.tscn" id="2_panel"]
 [ext_resource type="Theme" path="res://assets/theme/ui_theme.tres" id="3_theme"]
 [ext_resource type="Script" path="res://assets/scripts/ui/ResultPrompt.cs" id="4_prompt"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_horizontal"]
-size = Vector2(1000, 40)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_vertical"]
-size = Vector2(40, 920)
-
 [node name="Game" type="Node"]
 script = ExtResource("1_game")
-
-[node name="Walls" type="Node2D" parent="."]
-
-[node name="Top" type="StaticBody2D" parent="Walls"]
-position = Vector2(960, 60)
-
-[node name="Shape" type="CollisionShape2D" parent="Walls/Top"]
-shape = SubResource("RectangleShape2D_horizontal")
-
-[node name="Visual" type="ColorRect" parent="Walls/Top"]
-offset_left = -500.0
-offset_top = -20.0
-offset_right = 500.0
-offset_bottom = 20.0
-mouse_filter = 2
-color = Color(0.22, 0.26, 0.36, 1)
-
-[node name="Bottom" type="StaticBody2D" parent="Walls"]
-position = Vector2(960, 1020)
-
-[node name="Shape" type="CollisionShape2D" parent="Walls/Bottom"]
-shape = SubResource("RectangleShape2D_horizontal")
-
-[node name="Visual" type="ColorRect" parent="Walls/Bottom"]
-offset_left = -500.0
-offset_top = -20.0
-offset_right = 500.0
-offset_bottom = 20.0
-mouse_filter = 2
-color = Color(0.22, 0.26, 0.36, 1)
-
-[node name="Left" type="StaticBody2D" parent="Walls"]
-position = Vector2(480, 540)
-
-[node name="Shape" type="CollisionShape2D" parent="Walls/Left"]
-shape = SubResource("RectangleShape2D_vertical")
-
-[node name="Visual" type="ColorRect" parent="Walls/Left"]
-offset_left = -20.0
-offset_top = -460.0
-offset_right = 20.0
-offset_bottom = 460.0
-mouse_filter = 2
-color = Color(0.22, 0.26, 0.36, 1)
-
-[node name="Right" type="StaticBody2D" parent="Walls"]
-position = Vector2(1440, 540)
-
-[node name="Shape" type="CollisionShape2D" parent="Walls/Right"]
-shape = SubResource("RectangleShape2D_vertical")
-
-[node name="Visual" type="ColorRect" parent="Walls/Right"]
-offset_left = -20.0
-offset_top = -460.0
-offset_right = 20.0
-offset_bottom = 460.0
-mouse_filter = 2
-color = Color(0.22, 0.26, 0.36, 1)
 
 [node name="Countdown" type="Label" parent="."]
 z_index = 10

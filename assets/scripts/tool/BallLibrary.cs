@@ -71,4 +71,61 @@ public static class BallLibrary
         var image = Image.LoadFromFile(path);
         return image == null ? null : ImageTexture.CreateFromImage(image);
     }
+
+    /// <summary>
+    /// 在球自己的包里找一个资源：`user://balls/&lt;球id&gt;/resource/&lt;名字&gt;`。
+    ///
+    /// 名字**可以不写后缀**——会按 `extensions` 依次试；还找不到就去 `user://` 根目录
+    /// 找同名文件（少数公共资源放那儿）。写了 `user://` / `res://` 完整路径则原样用。
+    /// 找不到返回 null。
+    ///
+    /// 这是**所有小球独特资源的统一找法**：头像、音效、Spine 三件套、蛋的素材都走它，
+    /// 规矩只有一条——"东西放在球自己的 `resource/` 目录里"。
+    /// </summary>
+    public static string Find(string name, string ballId, params string[] extensions)
+    {
+        if (string.IsNullOrEmpty(name))
+        {
+            return null;
+        }
+
+        if (name.Contains("://"))
+        {
+            return FileAccess.FileExists(name) ? name : null;
+        }
+
+        foreach (var candidate in Candidates(name, extensions))
+        {
+            if (!string.IsNullOrEmpty(ballId))
+            {
+                var inBall = UserData.Balls + ballId + "/resource/" + candidate;
+                if (FileAccess.FileExists(inBall))
+                {
+                    return inBall;
+                }
+            }
+
+            var inUser = UserData.Root + candidate;
+            if (FileAccess.FileExists(inUser))
+            {
+                return inUser;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>名字本身，外加（没写后缀时）补上几种常见后缀的变体。</summary>
+    private static IEnumerable<string> Candidates(string name, string[] extensions)
+    {
+        yield return name;
+
+        if (string.IsNullOrEmpty(System.IO.Path.GetExtension(name)))
+        {
+            foreach (var extension in extensions)
+            {
+                yield return name + extension;
+            }
+        }
+    }
 }

@@ -16,8 +16,6 @@ public static class ComponentLibrary
                 return new CollisionAttack();
             case 2002:
                 return new EggAttack();
-            case 2003:
-                return new Shift();
             case 3001:
                 return new ConditionalImmune();
             case 4001:
@@ -28,8 +26,6 @@ public static class ComponentLibrary
                 return new StateSound();
             case 5001:
                 return new CircleShape();
-            case 5002:
-                return new SpineLook();
             case 6001:
                 return new Slow();
             default:

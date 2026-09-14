@@ -32,10 +32,11 @@ public partial class ConditionalImmune : BallComponent
         State = JsonTool.GetValue(parameters, "state", State);
     }
 
-    public override void _Ready()
+    /// <summary>装配时接线：解析"哪个状态无敌"，然后按可配的优先级挂到受伤链上。</summary>
+    public override void Bind(Ball ball, string configId)
     {
-        _ball = GetParent() as Ball;
-        if (_ball == null)
+        _ball = ball;
+        if (ball == null)
         {
             GD.PushError($"[{Type}] 组件没挂在球下面，条件无敌不生效。");
             return;
@@ -48,6 +49,12 @@ public partial class ConditionalImmune : BallComponent
         }
 
         _ready = true;
+
+        ball.Events.Register(EventName.take_damage, new EventResponseFunction
+        {
+            priority = Priority,
+            action = OnTakeDamage,
+        });
     }
 
     /// <summary>受伤链上的处理：正好是"要无敌"的状态就挡下来（false），其它状态放行（true）。</summary>

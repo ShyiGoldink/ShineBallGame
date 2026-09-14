@@ -38,12 +38,14 @@ enemy.TakeDamage(new DamageEvent(enemy, 伤害值, "attack.collision", 自己));
 
 | 路径 | 放什么 |
 | --- | --- |
-| `assets/scripts/basic` | 基类与核心：小球、状态、组件基类、事件中心、装配器、局管理器 |
-| `assets/scripts/components` | 具体组件，加新组件放这里；`ComponentLibrary.cs` 是编号表 |
+| `assets/scripts/basic` | 基类与核心：小球、状态、组件基类、事件总线、装配器、蛋的基类、外观层、局管理器 |
+| `assets/scripts/components` | 挂在球身上的组件，加新组件放这里；`ComponentLibrary.cs` 是编号表 |
+| `assets/scripts/eggs` | 蛋（不是球、也不挂组件，是独立的小东西）：一种蛋一个类，`EggLibrary.cs` 是编号表 |
 | `assets/scripts/tool` | 工具：Json 读取、路径、补数据、球的数据与扫描 |
 | `assets/scripts/ui` | 界面脚本：页面管理、选球、数据面板、血条、结算提示 |
 | `assets/scene` | 场景：`index.tscn`（主界面）、`game.tscn`（战斗）、`NormalBall.tscn`（小球预制体）等 |
 | `assets/data/balls/<球id>` | 小球的默认数据：`balldata.json` + `resource/`（头像、音效、Spine 资源都放这里） |
+| `assets/data/scenes/<场地id>` | 场地的默认数据：`scenedata.json`（现在只有出生范围）+ `avatar.png`；墙和边框是预制体 `assets/scene/arenas/<场地id>.tscn` |
 | `assets/theme/ui_theme.tres` | 中文字体主题（Godot 默认字体没有中文字形） |
 | `log` | 文档 |
 
@@ -175,29 +177,25 @@ assets/data/balls/NormalBall/
 
 #### 2003 attack.shift（屎蛋）
 
-撞到敌人时把它切成**受控状态**（这就是减速的入口），同时连着**若干秒**（默认 5）**每秒**造成对方**最大生命值的 1/100**（单次最多 100 点）的伤害。伤害走对方自己的受伤链打过去，所以对面挂了 `4002` 就会紫一下。
+**不是组件**，是 `Egg` 的子类（蛋在 `assets/scripts/eggs/` 里，见「如何新增一种蛋」）。撞到敌人时把它切成**受控状态**（减速的入口），然后连着 5 秒每秒造成对方最大生命值 **1/100**（单次最多 100 点）的伤害，效果走完自己消失。
 
-蛋长什么样也归它管：默认 `resources/shit.png`、显示 60 像素（按素材长边算）。蛋没有自己的数据目录，所以"这颗蛋是什么"就写在这个组件里——换个蛋，就是换一个 `egg_id` 指的组件。
-
-| 参数 | 类型 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `texture` | 字符串 | `res://resources/shit.png` | 蛋的素材。`res://` 开头当资源加载，`user://` 那种直接读文件 |
-| `size` | 数字 | 60 | 蛋显示多大（像素，按素材长边算），检测圈跟着一起改 |
-| `duration` | 数字 | 5 | 效果持续几秒：对面受控这么久，这段时间里每秒跳一次伤害 |
-| `tick_interval` | 数字 | 1 | 隔几秒跳一次伤害 |
-| `damage_ratio` | 数字 | 0.01 | 每次跳对方最大生命值的多少（0.01 就是 1/100） |
-| `damage_cap` | 数字 | 100 | 单次伤害上限 |
+| 写在代码里的默认值 | 值 | 说明 |
+| --- | --- | --- |
+| `Duration` | 5 | 效果持续几秒：这段时间里对面受控，每秒跳一次伤害 |
+| `TickInterval` | 1 | 隔几秒跳一次伤害 |
+| `DamageRatio` | 0.01 | 每次跳对方最大生命值的多少（1/100） |
+| `DamageCap` | 100 | 单次伤害上限 |
+| `Texture` / `Size` | `shit` / 60 | 素材（在**下蛋那颗球的** `resource/` 里找）和显示大小 |
 
 细节：
 
-* **它不是球，也不是实体**：整个东西就是"`Area2D` + 一张图"。所以不会推开、也不会挡住任何球（**包括下它自己的那颗球**），别人也碰不到它——只有它靠检测圈感知谁撞上来了（检测圈半径 = 显示大小的一半 × 1.2；60px 的蛋就是半径 36）。
+* **它不是球，也不是实体**：整个东西就是"`Area2D` + 一张图"。不会推开、也不会挡住任何球（**包括下它自己的那颗球**），别人也碰不到它——只有它靠检测圈感知谁撞上来了（检测圈半径 = 显示大小的一半 × 1.2；60px 的蛋就是半径 36）。
 * 撞上就立刻疼一下，之后每秒一次；重复撞到会把时间重新计时，不会叠加。
-* 伤害事件的来源记在**下蛋那颗球**头上（`SourceId` = 它的 id，`SourceType` = `attack.shift`）——蛋自己不是球，但账算在"谁下的蛋"身上，将来要按来源区分（比如"只有毒伤才上某个状态"）也认得出来。
-* **撞上就把壳收掉**：触发时把蛋的 `scale` 设成 0（Godot 会夹到 `0.00001`，肉眼就是没了），所以它当场"消失"，而 5 秒的跳伤继续在跑——节点得活着才能继续计时，所以这里**不能**改成 QueueFree。
-* **效果走完自己消失**：5 秒跳完、或者对面死了，这颗蛋就 `QueueFree` 掉。用 `QueueFree` 而不是 `Free`——触发是在 `Area2D.body_entered` 的回调里跑的，当场删节点会把正在派发信号的那套东西一起掀掉。
-* 减速（`6001`）和中毒染色（`4002`）是挂在**对面身上**的，所以蛋消失不会把效果一起带走。
-* 没人碰过的蛋会一直留在场上（它不进 `balls` 组，所以不会影响胜负判定，只是占个位置）。要加"N 秒到期自动消失"，说一声。
-* **减速真正的动作在对面**：蛋只负责"切成受控"，接管那一段移动的是对面身上的 `6001`（见「控制类」）。
+* **撞上就把壳收掉**：触发时把 `scale` 设成 0（Godot 会夹到 `0.00001`，肉眼就是没了），所以它当场"看不见"，而 5 秒的跳伤继续在跑——节点得活着才能继续计时，所以这里**不能**删节点。
+* **效果走完自己消失**：目标死了、或者时间到，蛋就 `Destroy()`（内部是 `QueueFree`）。用 `QueueFree` 而不是 `Free`——触发是在 `Area2D.body_entered` 的回调里跑的，当场删会把正在派发信号的那套东西一起掀掉。
+* 减速（`6001`）和中毒染色（`4002`）挂在**对面身上**，所以蛋消失不会把效果一起带走。
+* 伤害来源记在**下蛋那颗球**头上（`SourceId` 是它的 id，`SourceType` 是 `egg.shit`）——蛋自己不是球，但账算在"谁下的蛋"身上。
+* 没人碰过的蛋会一直躺在场上（不挡路、也不算存活、不影响胜负）。要"到期自动消失"就在 `Egg` 基类里加个计时。
 
 ### 防御类
 
@@ -387,11 +385,25 @@ assets/data/balls/NormalBall/
 1. 在 `assets/scripts/components/` 下写一个类，继承 `BallComponent`，文件**必须**和类同名（例如 `Burn.cs` → `class Burn`）。
 2. 挑一个没被占用的编号（1xxx 移动 / 2xxx 攻击 / 3xxx 防御 / 4xxx 行为 / 5xxx 形态 / 6xxx 控制），实现 `Id`、`Type`、`Description`。
 3. 自己的参数写成公开字段，并重写 `ApplyParams` 从字典里读（用 `JsonTool.GetValue(parameters, "键", 默认值)`）。
-4. 在 `ComponentLibrary.Create` 里加一个 `case 你的编号: return new 你的组件();`。
-5. 如果这个组件需要接线（连信号、注册事件、填字段），在 `BallAssembler.Wire` 的 `switch` 里加一个分支。
+4. 要接线就重写 `Bind(Ball ball, string configId)`：注册事件、连信号、改形状都在这里。
+   `configId` 是"哪颗球的 Json 配出了我"——`enemycomponents` 送人时是**送出去的那颗球**，
+   找素材/找音效要用它，别用现在挂着的这颗。
+   ⚠️ 接线写 `Bind`，别写 `_Ready`：`Bind` 在装配时跑（球还没进场景树），而血条是在**所有组件
+   `Bind` 完之后**按最终碰撞圈摆的——`_Ready` 太晚，`5001` 改的形状会被血条漏掉。
+5. 在 `ComponentLibrary.Create` 里加一个 `case 你的编号: return new 你的组件();`。
 6. 现在就能在 `balldata.json` 里用编号引用它了。
 
-`BallAssembler` 目前负责的接线：**碰撞攻击**填 `Group` 并把 `HitArea` 的 `body_entered` 接上；**普通受伤**按优先级注册到 `take_damage`；**圆形碰撞箱**按参数改两个圈的半径（改之前先复制形状）。其它组件默认什么都不接。
+**装配器不用改**：`BallAssembler` 只做"建 → 填参数 → 挂 → 调 `Bind`"，它不认识任何具体组件；
+事件也由组件自己注册，装配器不碰。
+
+## 如何新增一种蛋
+
+蛋不走数据配置（蛋和蛋的差别可能很大：会飘的、会炸的、会孵小兵的），**一种蛋 = 一个类**：
+
+1. 在 `assets/scripts/eggs/` 下写一个类，继承 `Egg`，文件同名（例如 `BombEgg.cs` → `class BombEgg`）。
+2. 覆盖 `OnHit(Ball enemy)` 写自己的效果；外观覆盖 `Texture` / `Size`（素材默认在**下蛋那颗球的** `resource/` 里找）。
+3. "消失"用 `HideShell()`（把壳收掉、节点留着继续干活），活干完用 `Destroy()`（排到帧末删自己）。
+4. 在 `EggLibrary.Create` 里加 `case 编号: return new 你的蛋();`，然后在球的 `2002 attack.egg` 的 `egg_id` 里填这个编号。
 
 ## Spine 扩展
 
@@ -457,3 +469,5 @@ assets/data/balls/NormalBall/
 9. **编辑器里的"构建"按钮现在用不了**：引擎自带工具要 .NET SDK 10.0.9，这台机器上只装了 9.0.305。编译走命令行 `dotnet build ShineBallGame.csproj`，并把 `NUGET_PACKAGES` 指到 `C:\Users\24807\.nuget\packages`，否则离线解析不到 `Godot.NET.Sdk`。
 10. **预制体里的资源是所有球共用的**。形状、贴图、材质这些 `sub_resource` 默认不随实例复制（`resource_local_to_scene = false`），改之前必须先 `Duplicate()`，否则一屏的球会一起变——而且改的是全局资源，切场景都还留着。`BallAssembler.SetCircleRadius` 是按这个写的。
 11. **UI 用 `z_index` 压住球**。`game.tscn` 里的倒计时、结果、提示、左右数据面板都设了 `z_index = 10`，球是默认的 0——不然球会飘到面板和文字上面（球的节点是运行时才加进去的，排在场景节点后面）。
+12. **组件接线写在 `Bind`，不要写在 `_Ready`**。`Bind` 在装配时跑（球还没进场景树），血条是在所有组件 `Bind` 完之后按最终碰撞圈摆的，所以"改形状"必须赶在血条前面。
+13. **草稿素材放 `draft/`**（已 gitignore，里面有 `.gdignore` 所以引擎不扫描）。正式素材放球自己的 `assets/data/balls/<球id>/resource/`，跑一次会自动补到 `user://`；找法统一在 `BallLibrary.Find`（头像、音效、Spine、蛋的素材都走它）。

@@ -37,7 +37,8 @@ public sealed class BallData
             Name = JsonTool.Get(file, "name", ballId),
             Hp = JsonTool.Get(file, "hp", 100f),
             Type = JsonTool.Get(file, "type", 1),
-            SpineScale = JsonTool.Get(file, "spine_scale", 1f),
+            // 只有 Spine 球才读这个，不然贴图球会平白多一条"缺 key"的警告
+            SpineScale = JsonTool.Get(file, "type", 1) == 2 ? JsonTool.Get(file, "spine_scale", 1f) : 1f,
             SelfComponents = JsonTool.Get(file, "selfcomponents", new Godot.Collections.Dictionary()),
             EnemyComponents = JsonTool.Get(file, "enemycomponents", new Godot.Collections.Dictionary()),
         };

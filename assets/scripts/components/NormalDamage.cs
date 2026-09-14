@@ -15,6 +15,22 @@ public partial class NormalDamage : BallComponent
 
     public override string Description => "受伤链的最后一环：直接扣血，然后阻塞";
 
+    /// <summary>装配时接线：把自己挂到受伤链的最后一环（优先级 500，比护盾、中毒都靠后）。</summary>
+    public override void Bind(Ball ball, string configId)
+    {
+        if (ball == null)
+        {
+            GD.PushError($"[{Type}] 组件没挂在球下面，扣不了血。");
+            return;
+        }
+
+        ball.Events.Register(EventName.take_damage, new EventResponseFunction
+        {
+            priority = DamagePriority.NormalDamage,
+            action = OnTakeDamage,
+        });
+    }
+
     /// <summary>受伤链的最后一环：按事件里"还剩多少"扣血，然后返回 false 阻塞后面的处理函数。</summary>
     public bool OnTakeDamage(object arg)
     {

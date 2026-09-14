@@ -19,6 +19,9 @@ public partial class GameManager : Node
     /// <summary>玩家 2 选中的球 id。</summary>
     public string Player2Ball { get; private set; } = string.Empty;
 
+    /// <summary>选好的场地 id。空字符串表示"没选过"，进战斗时用默认场地。</summary>
+    public string SceneId { get; private set; } = string.Empty;
+
     /// <summary>双方都选好球了没有。战斗场景靠它决定能不能开局。</summary>
     public bool CanStart => !string.IsNullOrEmpty(Player1Ball) && !string.IsNullOrEmpty(Player2Ball);
 
@@ -36,7 +39,14 @@ public partial class GameManager : Node
     }
 
     /// <summary>双方都确认选球之后调这里：记下选球，然后进战斗场景。</summary>
+    /// <remarks>只选球、不选场地时用这个重载（脚本 / 调试方便）。</remarks>
     public void StartGame(string player1BallId, string player2BallId)
+    {
+        StartGame(player1BallId, player2BallId, null);
+    }
+
+    /// <summary>双方都确认选球之后调这里：记下选球和场地，然后进战斗场景。</summary>
+    public void StartGame(string player1BallId, string player2BallId, string sceneId = null)
     {
         if (string.IsNullOrEmpty(player1BallId) || string.IsNullOrEmpty(player2BallId))
         {
@@ -46,6 +56,7 @@ public partial class GameManager : Node
 
         Player1Ball = player1BallId;
         Player2Ball = player2BallId;
+        SceneId = sceneId ?? string.Empty;
 
         GD.Print($"[对战] 开始：{Player1Ball} vs {Player2Ball}");
         GetTree().ChangeSceneToFile(GameScene);

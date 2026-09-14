@@ -1,0 +1,65 @@
+[gd_scene load_steps=3 format=3]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_horizontal"]
+size = Vector2(1000, 40)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_vertical"]
+size = Vector2(40, 920)
+
+[node name="BasicArena" type="Node2D"]
+
+[node name="Top" type="StaticBody2D" parent="."]
+position = Vector2(960, 60)
+
+[node name="Shape" type="CollisionShape2D" parent="Top"]
+shape = SubResource("RectangleShape2D_horizontal")
+
+[node name="Visual" type="ColorRect" parent="Top"]
+offset_left = -500.0
+offset_top = -20.0
+offset_right = 500.0
+offset_bottom = 20.0
+mouse_filter = 2
+color = Color(0.22, 0.26, 0.36, 1)
+
+[node name="Bottom" type="StaticBody2D" parent="."]
+position = Vector2(960, 1020)
+
+[node name="Shape" type="CollisionShape2D" parent="Bottom"]
+shape = SubResource("RectangleShape2D_horizontal")
+
+[node name="Visual" type="ColorRect" parent="Bottom"]
+offset_left = -500.0
+offset_top = -20.0
+offset_right = 500.0
+offset_bottom = 20.0
+mouse_filter = 2
+color = Color(0.22, 0.26, 0.36, 1)
+
+[node name="Left" type="StaticBody2D" parent="."]
+position = Vector2(480, 540)
+
+[node name="Shape" type="CollisionShape2D" parent="Left"]
+shape = SubResource("RectangleShape2D_vertical")
+
+[node name="Visual" type="ColorRect" parent="Left"]
+offset_left = -20.0
+offset_top = -460.0
+offset_right = 20.0
+offset_bottom = 460.0
+mouse_filter = 2
+color = Color(0.22, 0.26, 0.36, 1)
+
+[node name="Right" type="StaticBody2D" parent="."]
+position = Vector2(1440, 540)
+
+[node name="Shape" type="CollisionShape2D" parent="Right"]
+shape = SubResource("RectangleShape2D_vertical")
+
+[node name="Visual" type="ColorRect" parent="Right"]
+offset_left = -20.0
+offset_top = -460.0
+offset_right = 20.0
+offset_bottom = 460.0
+mouse_filter = 2
+color = Color(0.22, 0.26, 0.36, 1)

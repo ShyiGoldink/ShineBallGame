@@ -9,12 +9,6 @@ public partial class Game : Node
 {
 	private const float CountdownSeconds = 3f;
 
-	/// <summary>玩家 1 出生点（左边）。</summary>
-	private static readonly Vector2 Player1Spawn = new Vector2(700f, 540f);
-
-	/// <summary>玩家 2 出生点（右边）。</summary>
-	private static readonly Vector2 Player2Spawn = new Vector2(1220f, 540f);
-
 	private Label _countdown;
 	private Label _result;
 	private float _timeLeft = CountdownSeconds;
@@ -33,6 +27,27 @@ public partial class Game : Node
 			return;
 		}
 
+		// 场地：先按选好的 id 取配置（没选过就用默认那个），再把场地预制体摆上去。
+		// 场地数据现在只有"出生范围"，墙和边框在预制体里（res://assets/scene/arenas/<id>.tscn）。
+		var scene = SceneData.Load(manager.SceneId) ?? SceneData.Load(SceneLibrary.DefaultId());
+		if (scene == null)
+		{
+			GD.PushError("[对战] 一个场地都没有，先看看 user://scenes。");
+			return;
+		}
+
+		var arena = GD.Load<PackedScene>(scene.PrefabPath);
+		if (arena == null)
+		{
+			GD.PushWarning($"[对战] 只有场地数据、没有配对的场地预制体：{scene.PrefabPath}");
+		}
+		else
+		{
+			AddChild(arena.Instantiate()); // 先摆场地，球再压在上面
+		}
+
+		GD.Print($"[对战] 场地：{scene.Name}（{scene.Id}）");
+
 		var data1 = BallData.Load(manager.Player1Ball);
 		var data2 = BallData.Load(manager.Player2Ball);
 		if (data1 == null || data2 == null)
@@ -40,8 +55,8 @@ public partial class Game : Node
 			return;
 		}
 
-		var ball1 = BallAssembler.Build(data1, Player1Spawn, 1);
-		var ball2 = BallAssembler.Build(data2, Player2Spawn, 2);
+		var ball1 = BallAssembler.Build(data1, scene.PickSpawn(scene.LeftSpawn), 1);
+		var ball2 = BallAssembler.Build(data2, scene.PickSpawn(scene.RightSpawn), 2);
 		if (ball1 == null || ball2 == null)
 		{
 			return;
@@ -50,9 +65,10 @@ public partial class Game : Node
 		AddChild(ball1);
 		AddChild(ball2);
 
-		// 战前互挂：各自把"给对方"的组件挂到对面身上
-		BallAssembler.AttachComponents(ball2, data1.EnemyComponents);
-		BallAssembler.AttachComponents(ball1, data2.EnemyComponents);
+        // 战前互挂：各自把"给对方"的组件挂到对面身上。
+        // 第三个参数是"配出这些组件的那颗球"，组件找素材、找音效时按它算。
+        BallAssembler.AttachComponents(ball2, data1.EnemyComponents, data1.Id);
+        BallAssembler.AttachComponents(ball1, data2.EnemyComponents, data2.Id);
 
 		// 数据面板自己去读球的当前值，不用事件推
 		GetNodeOrNull<BallDataPanel>("LeftPanel")?.Bind(ball1, "玩家 1");

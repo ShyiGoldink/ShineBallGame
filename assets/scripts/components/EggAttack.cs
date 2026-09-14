@@ -40,10 +40,11 @@ public partial class EggAttack : BallComponent
         EggId = JsonTool.GetValue(parameters, "egg_id", EggId);
     }
 
-    public override void _Ready()
+    /// <summary>装配时接线：拿到球、把 CD 设成满的、订"状态变化"（用来知道这次攻击有没有被打断）。</summary>
+    public override void Bind(Ball ball, string configId)
     {
-        _ball = GetParent() as Ball;
-        if (_ball == null)
+        _ball = ball;
+        if (ball == null)
         {
             GD.PushError($"[{Type}] 组件没挂在球下面，攻击起不来。");
             return;
@@ -138,7 +139,7 @@ public partial class EggAttack : BallComponent
 
         parent.AddChild(egg);
 
-        GD.Print($"[{Type}] {_ball.Name} 产下一颗蛋（组件 {EggId}）");
+        GD.Print($"[{Type}] {_ball.Name} 产下一颗蛋（编号 {EggId}）");
     }
 
     /// <summary>

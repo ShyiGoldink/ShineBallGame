@@ -30,10 +30,14 @@ public partial class NormalMove : BallComponent
         Speed = JsonTool.GetValue(parameters, "speed", Speed);
     }
 
-    public override void _Ready()
+    /// <summary>
+    /// 装配时接线：拿到球、订"状态变化"、按当前状态对一次表。
+    /// （球挂上组件之前可能已经切过状态了，那次通知注册事件是收不到的。）
+    /// </summary>
+    public override void Bind(Ball ball, string configId)
     {
-        _ball = GetParent() as Ball;
-        if (_ball == null)
+        _ball = ball;
+        if (ball == null)
         {
             GD.PushError($"[{Type}] 组件没挂在球下面，没法移动。");
             return;
@@ -43,8 +47,6 @@ public partial class NormalMove : BallComponent
         // 优先级这里填 0 就行，状态事件没有先后之争；返回 true 是为了不挡住别的组件收听。
         _ball.Events.Register(EventName.state_changed, new EventResponseFunction { priority = 0, action = OnStateChanged });
 
-        // 先按当前状态对一次表：球挂上组件之前可能已经切过状态了（比如刚出生的蛋），
-        // 那次通知注册事件是收不到的。
         _moving = _ball.State == BallState.Move;
     }
 

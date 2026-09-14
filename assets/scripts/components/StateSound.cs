@@ -32,10 +32,11 @@ public partial class StateSound : BallComponent
         Sound = JsonTool.GetValue(parameters, "sound", Sound);
     }
 
-    public override void _Ready()
+    /// <summary>装配时接线：解析"哪个状态响"，然后订状态变化。</summary>
+    public override void Bind(Ball ball, string configId)
     {
-        _ball = GetParent() as Ball;
-        if (_ball == null)
+        _ball = ball;
+        if (ball == null)
         {
             GD.PushError($"[{Type}] 组件没挂在球下面，音效不会响。");
             return;

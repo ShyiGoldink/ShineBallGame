@@ -11,6 +11,10 @@ public partial class BallPicker : PanelContainer
     [Signal]
     public delegate void ConfirmedEventHandler(string ballId);
 
+    /// <summary>取消确认（点"重选"）时发出：选球界面收到就重新禁掉"开始游戏"。</summary>
+    [Signal]
+    public delegate void UnconfirmedEventHandler();
+
     private const string ButtonScene = "res://assets/scene/BallButton.tscn";
 
     /// <summary>当前选中的球 id，还没选就是空字符串。</summary>
@@ -22,6 +26,7 @@ public partial class BallPicker : PanelContainer
     private GridContainer _grid;
     private Label _status;
     private Button _confirm;
+    private string _title = string.Empty;
     private readonly ButtonGroup _group = new();
 
     public override void _Ready()
@@ -42,6 +47,7 @@ public partial class BallPicker : PanelContainer
         EnsureNodes();
 
         var titleLabel = GetNodeOrNull<Label>("Box/Title");
+        _title = title;
         if (titleLabel != null)
         {
             titleLabel.Text = title;
@@ -99,6 +105,7 @@ public partial class BallPicker : PanelContainer
     {
         if (IsConfirmed)
         {
+            OnReselectPressed();
             return;
         }
 
@@ -123,13 +130,46 @@ public partial class BallPicker : PanelContainer
             }
         }
 
-        if (_confirm != null)
-        {
-            _confirm.Disabled = true;
-        }
+        // 确认按钮本身不禁：它变成"重选"，想反悔就点它
+        SetConfirmButton("重选");
 
         RefreshStatus();
         EmitSignal(SignalName.Confirmed, SelectedId);
+    }
+
+    /// <summary>
+    /// 重选：把确认放掉，按钮重新能点，并告诉外面"这个玩家又没定了"。
+    /// 选球的选中框不特意清掉——玩家多半是想换一个，留着高亮更好认。
+    /// </summary>
+    private void OnReselectPressed()
+    {
+        IsConfirmed = false;
+
+        if (_grid != null)
+        {
+            foreach (var child in _grid.GetChildren())
+            {
+                if (child is Button button)
+                {
+                    button.Disabled = false;
+                }
+            }
+        }
+
+        SetConfirmButton("确认");
+
+        RefreshStatus();
+        EmitSignal(SignalName.Unconfirmed);
+        GD.Print($"[选球] {_title} 取消确认，可以重新选");
+    }
+
+    private void SetConfirmButton(string text)
+    {
+        if (_confirm != null)
+        {
+            _confirm.Disabled = false;
+            _confirm.Text = text;
+        }
     }
 
     private void RefreshStatus()

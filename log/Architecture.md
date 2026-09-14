@@ -4,17 +4,20 @@
 > **「耦合与偏离自查」**——那些做完之后我自己觉得可疑、需要你拍板的地方。
 > 日常怎么用（加球、加组件、约定与坑）在 `FunctionGuide.md`，这里不重复。
 >
-> 结论先放这儿：**功能是通的（实机跑过），但有 3 处结构性耦合值得处理**——
-> ①装配器认识每一个组件；②"外观/尺寸"有四个入口；③事件注册有两种写法。
+> 结论先放这儿：**功能是通的（实机跑过）**。上一版点名的 3 处结构性耦合
+> （装配器认识每个组件 / 外观有四个入口 / 事件注册两种写法）**已经处理掉了**，
+> 见下方自查第 1、2、3 条——现在"加组件"不用动装配器、"加外观"只有一处入口、
+> 事件一律组件自己注册。剩下的都是具体坑。
 
 ## 一、现在是什么
 
 | 项 | 数 |
 | --- | --- |
-| C# 文件 | 39 个，约 3650 行 |
+| C# 文件 | 42 个，约 3740 行 |
 | 场景 | 6 个（`index` / `game` / `NormalBall` / `BallPicker` / `BallButton` / `BallDataPanel`） |
 | 球 | 2 颗（`NormalBall` 贴图球、`pulipuli` Spine 球） |
-| 组件 | 11 个（1001 移动 / 2001 碰撞 / 2002 下蛋 / 2003 屎蛋 / 3001 条件无敌 / 4001 受伤 / 4002 中毒染色 / 4003 进状态音效 / 5001 碰撞箱 / 5002 Spine 外观 / 6001 减速） |
+| 组件 | 9 个（1001 移动 / 2001 碰撞 / 2002 下蛋 / 3001 条件无敌 / 4001 受伤 / 4002 中毒染色 / 4003 进状态音效 / 5001 碰撞箱 / 6001 减速） |
+| 蛋 | 1 种（`2003` 屎蛋，是 `Egg` 的子类，不是组件） |
 | 外部依赖 | Godot 4.7.1（带 C# 的自编译版）+ Spine GDExtension（`addons/spine-godot`） |
 
 玩法一句话：选球 → 3 秒倒计时 → 两颗球按组件打（碰撞、下蛋、减速、中毒）→ 只剩一个阵营时结算。
@@ -25,23 +28,28 @@
 | --- | --- | --- |
 | `assets/scripts/basic/Ball.cs` | 小球本体：血量、五个状态、受控/攻击的计时、事件总线入口 | 所有组件、装配器、面板 |
 | `assets/scripts/basic/BallEvent.cs` | 轻量事件总线：按优先级排、返回 false 阻塞 | `Ball.Events`，各组件注册 |
-| `assets/scripts/basic/BallComponent.cs` | 组件基类（自描述：编号/类型名/说明/前置） | 所有组件 |
+| `assets/scripts/basic/BallComponent.cs` | 组件基类（自描述 + `Bind` 接线钩子） | 所有组件 |
+| `assets/scripts/basic/BallLook.cs` | **外观层**：贴图 / Spine / 碰撞圈 / 血条，唯一入口 | 装配器、`5001`、蛋 |
+| `assets/scripts/basic/SpineLook.cs` | Spine 那一层（很薄，全程 `Call` 字符串调用） | `BallLook` |
+| `assets/scripts/basic/Egg.cs` | 蛋的基类（`Area2D` + 图 + 检测圈 + 消失），一种蛋一个子类 | `EggLibrary` |
+| `assets/scripts/basic/EggLibrary.cs` | 蛋的编号表（编号 → 蛋类） | `BallAssembler.BuildEgg` |
+| `assets/scripts/eggs/ShitEgg.cs` | 屎蛋：撞到人 → 减速 + 每秒跳伤 → 自己消失 | `EggLibrary` |
 | `assets/scripts/basic/DamageEvent.cs` | 伤害事件：还剩多少(`Amount`) / 原始值(`Original`) / 谁打的(`Source`/`SourceId`) / 哪种攻击(`SourceType`) | `Ball.TakeDamage`、受伤链上的每个组件 |
 | `assets/scripts/basic/BallMovement.cs` | "推进 + 撞墙反弹"这一小段共用逻辑 | `NormalMove`（移动态）、`Slow`（受控态） |
 | `assets/scripts/basic/BallState.cs` | 五个状态枚举（登场/移动/受控/攻击/死亡） | `Ball`、各组件的状态门控 |
 | `assets/scripts/basic/DamagePriority.cs` | 受伤链优先级表（1000 无敌 … 500 一般扣血） | 装配器注册、组件参考 |
 | `assets/scripts/basic/EventName.cs` | 事件名常量（`take_damage` / `state_changed`） | 所有注册事件的地方 |
-| `assets/scripts/basic/BallAssembler.cs` | **装配中心**：读数据 → 建球 → 换外观 → 挂组件 → 接线 | `Game._Ready`、`EggAttack.LayEgg` |
+| `assets/scripts/basic/BallAssembler.cs` | **装配中心**：建球 → 摆外观 → 挂组件（调 `Bind`）→ 摆血条 / 产蛋。**不认识任何具体组件** | `Game._Ready`、`EggAttack.LayEgg` |
 | `assets/scripts/basic/Game.cs` | 战斗场景：读双方球 → 装配 → 倒计时 → 放球 → 结算 → 暂停 | 场景 `game.tscn` |
 | `assets/scripts/basic/GameManager.cs` | 局单例（autoload）：记住双方选球、切场景、回主菜单 | 选球页、结算提示 |
 | `assets/scripts/components/` | 具体组件（见 `FunctionGuide.md` 的组件总表） | 由装配器按 Json 编号创建 |
 | `assets/scripts/components/ComponentLibrary.cs` | 编号 → 组件实例的翻译表 | `BallAssembler` |
 | `assets/scripts/tool/BallData.cs` | `balldata.json` 的内存模型 | 装配器、`Game` |
-| `assets/scripts/tool/BallLibrary.cs` | 扫 `user://balls` 列出所有球（选球界面用）、读头像 | `SelectPage`、`Shift`（读 user:// 图片） |
+| `assets/scripts/tool/BallLibrary.cs` | 扫 `user://balls` 列出所有球、读图；`Find` 是**小球独特资源的统一找法** | `SelectPage`、`Egg`、`SoundTool`、`BallLook` |
 | `assets/scripts/tool/DataSeeder.cs` | 首次/每次启动把仓库默认数据补到 `user://`（**只补缺不覆盖**） | `Bootstrap` |
 | `assets/scripts/tool/UserData.cs` | `user://` 目录布局常量 | 几乎所有碰文件的地方 |
 | `assets/scripts/tool/JsonTool.cs` | 通用 Json 读工具（带缓存、点号取子键） | 所有读 Json 的地方 |
-| `assets/scripts/tool/SoundTool.cs` | 从 `user://` 读音频、缓存、播一遍 | 目前只有 `2001` 用 |
+| `assets/scripts/tool/SoundTool.cs` | 读音频（走 `BallLibrary.Find`）、缓存、播一遍 | `2001` 撞击音、`4003` 进状态音 |
 | `assets/scripts/tool/Bootstrap.cs` | autoload：启动时补数据 | 引擎启动 |
 | `assets/scripts/ui/` | 界面：页面管理、选球、数据面板、血条、结算提示 | `index.tscn` / `game.tscn` |
 | `assets/scene/*.tscn` | 场景与预制体（`NormalBall.tscn` 是所有球共用的预制体） | 引擎 |
@@ -115,26 +123,24 @@ basic(Ball) ──→ 只认识 BallEvent/BallState，不认识任何具体组�
 
 按"我建议的处理优先级"排。前三条是结构性的，后面是具体坑。
 
-### 1. 装配器认识每一个组件（最集中）
+### 1. 装配器认识每一个组件（✅ 已处理）
 
-* **位置**：`BallAssembler.Wire` 的 switch、`SetAppearance`、`SetSpineAppearance`、`BuildEgg`。
-* **现象**：加一个需要接线的组件，就要在装配器里加一个 `case`；加一种外观，就要加一个分支。
-* **为什么可疑**：这是唯一"核心认识所有细节"的地方，组件越多它越长。
-* **注意**：**这是你定的约定**（"接线在 `BallAssembler.Wire`"），不是偏离。要不要改由你定。
-* **可选方向**：给 `BallComponent` 加一个 `Bind(Ball)` 虚方法，组件自己接线；装配器只做"建 → 挂 → 调 Bind"。约定要改，但装配器会瘦成 20 行。
+* **当时的做法**：`BallAssembler.Wire` 里一个 `case` 接一个组件，加组件必改装配器。
+* **现在**：`BallComponent` 多了 `Bind(Ball ball, string configId)` 钩子——**组件自己接线**
+  （注册事件、连信号、改形状），装配器只做"建 → 填参数 → 挂 → 调 `Bind`"，**不认识任何具体组件**。
+  `configId` 顺着传下去，顺带解决了"从 `enemycomponents` 送出去的组件该用谁的包找资源"。
+* **代价**：`Bind` 必须在**装配期**（球进树之前）跑，而且要比摆血条早——已写进 `FunctionGuide` 的约定清单。
 
-### 2. "外观 / 尺寸"有四个入口
+### 2. "外观 / 尺寸"有四个入口（✅ 已处理）
 
-* **位置**：`BallAssembler.SetBodyTexture`（type1 贴图）、`SpineLook`（type2）、`Shift.BuildLook`（蛋的图 + 检测圈）、`CircleShape`（碰撞圈）。
-* **现象**：想改"球长什么样"的规则，得翻四个地方；碰撞圈的逻辑还写了两遍（5001 与 `SetCircle`）。
-* **为什么可疑**：这是最可能"改一处忘一处"的地方。
-* **建议**：抽一层"外观"（`Look`），三个来源（贴图 / Spine / 蛋）都走它，碰撞圈只留一个入口。
+* **当时的做法**：贴图在装配器、Spine 在 `SpineLook`、蛋在自己身上、碰撞圈在 `5001` 里各写一份。
+* **现在**：`basic/BallLook.cs` 是**唯一入口**——贴图 / Spine / 显示尺寸 / 碰撞圈 / 血条位置全在这里；
+  `5001` 只调 `BallLook.SetCircle`，蛋只调 `BallLook.FitSprite`。想改"球多大 / 判定多大"只改这一个文件。
 
-### 3. 事件注册有两种写法
+### 3. 事件注册有两种写法（✅ 已处理）
 
-* **位置**：`NormalMove` / `CollisionAttack` / `EggAttack` / `Slow` / `SpineLook` 在**自己的 `_Ready`** 里注册；而 `NormalDamage` / `Poison` 由**装配器**注册。
-* **为什么可疑**：同一个概念两种规矩，看代码的人要先猜"这个组件的注册在哪"。纯属历史原因（早期只有 4001，装配器顺手注册了）。
-* **建议**：统一到组件自己注册（`_Ready` 或 `Bind`），装配器不碰事件。
+* **当时的做法**：一半组件在自己 `_Ready` 里注册，`4001`/`4002` 由装配器注册。
+* **现在**：**一律在组件自己的 `Bind` 里注册**，装配器完全不碰事件。看任何一个组件，接线都在同一个地方。
 
 ### 4. `Ball` 里混着玩法的时长
 
@@ -145,9 +151,9 @@ basic(Ball) ──→ 只认识 BallEvent/BallState，不认识任何具体组�
 
 ### 5. `Ball.Id` 和 `ball.Name` 是两份
 
-* **位置**：`Ball.Id`（后加）与 `ball.Name = data.Id`。
-* **现象**：两颗同种球相撞时引擎会改 `Name`（日志里出现过 `@CharacterBody2D@41`），`Id` 不受影响。
-* **建议**：以后统一用 `Id`；`Name` 只当调试标签。可以再顺手给 `Name` 加序号，日志好认。
+* **当时的做法**：`ball.Name = data.Id`，两颗同种球相撞时引擎把它改成 `@CharacterBody2D@41` 那种，日志没法看。
+* **现在**：`Ball.Id` 是**唯一的数据身份**（找素材、找音效都它）；`Name` 只是调试标签，由装配器按序号生成
+  （`pulipuli#1`、`Egg2003#1`），日志里一眼知道是第几个。约定已写进 `FunctionGuide`。
 
 ### 6. 伤害载荷是裸 `float`（✅ 已处理）
 
@@ -159,10 +165,13 @@ basic(Ball) ──→ 只认识 BallEvent/BallState，不认识任何具体组�
   * `TakeDamage` 返回 `true/false` → 调用方知道"这次有没有被挡下来"。
 * **还剩**：3xxx 里除了 `3001` 之外的组件（护盾/真伤/沉默）还没做，但**位置已经留好了**（`DamagePriority` 里的 700/800/900）。
 
-### 7. 控制类组件不能共存
+### 7. 控制类组件不能共存（✅ 已按你的思路处理）
 
-* **位置**：`Slow._PhysicsProcess` 直接驱动球。
-* **现象**：一颗球挂两个控制类组件，两个都会驱动一次 → 球跑得比预期快。
+* **现在**：`BallComponent` 上多了三个属性给控制类用——`ControlCategory` / `ControlCategoryPriority` / `ControlStrength`；
+  `BallControl.PickDriver(球)` 每帧按"先比类别优先级、同类别再比强度、最后按挂载顺序"选出一个驱动方。
+  **强的那条拿到方向盘，弱的自然就不生效**（弱的那条线还活着，只是球不听它）——就是你说的"阻塞 / 非阻塞那套"。
+  `Slow` 已实现：`category` / `category_priority` / `strength`（不显式配就按"减得多狠"折算，0.3 倍 → 强度 70）。
+* **还没动**：你说的"减速会影响攻击"（受控期间进不了攻击状态）是设计取舍，先留着。
 * **建议**：球那边做个"谁驱动"的登记，按优先级选一个（这也是 `priority` 真正的用武之地）。
 
 ### 8. Spine 那一层没有编译期检查
@@ -172,24 +181,49 @@ basic(Ball) ──→ 只认识 BallEvent/BallState，不认识任何具体组�
 * **风险**：方法名、属性名写错只在运行时炸；Spine 扩展升级也可能改动 API。
 * **建议**：保持这一层薄（现在已经够薄），改的时候一定要跑一次实机。
 
-### 9. 蛋没有自己的数据
+### 9. 蛋没有自己的数据（✅ 已处理）
+
+* **现在**：蛋有了自己的基类 `Egg`（`basic/Egg.cs`）+ 编号表 `EggLibrary`，**一种蛋一个子类**
+  （`eggs/ShitEgg.cs`）。不走数据配置——蛋和蛋差别可能很大（会飘的、会炸的），代码里写更直接。
+  加蛋的步骤在 `FunctionGuide` 的「如何新增一种蛋」。
 
 * **位置**：`Shift` 把外观（贴图/尺寸）和行为参数写在自己的默认值里；`EggAttack.egg_id` 只能指定一个组件。
 * **后果**：想换一种蛋 = 新写一个组件；蛋的行为参数只能改组件的默认值。
 * **建议**：等你要做第二、第三种蛋时，扩成"蛋也读一份数据"。
 
-### 10. 音效的归属
+### 10. 音效的归属（✅ 已处理）
+
+* **现在**：**小球独特资源的找法统一成一条**——`BallLibrary.Find(名字, 球id, 后缀...)`：
+  先在球自己的 `user://balls/<球id>/resource/` 找，再找 `user://` 根目录，名字可以不写后缀。
+  头像、音效、Spine 三件套、蛋的素材全走它。`SoundTool` 只是它的一个调用方。
+  "从 `enemycomponents` 送出去的组件用谁的包"由 `Bind` 的 `configId` 解决（送出去的那颗球）。
 
 * **位置**：`SoundTool.Resolve(sound, ballId)` 按"被挂的那颗球"的目录找文件。
 * **现象**：通过 `enemycomponents` 挂给对面的攻击组件，音效会去**对面**的目录找。
 * **现状**：现在没人这么用，碰不到；要用之前得先把"配置来自哪颗球"传进去。
 
-### 11. 场景里的数字 vs 数据里的数字
+### 11. 场景里的数字 vs 数据里的数字（🟡 底座好了，选择界面没做）
+
+* **已经做的**：
+  * 选球确认之后可以**取消重选**（确认键变"重选"，并通知选球页重新禁掉"开始游戏"）。
+  * **场地系统**：`user://scenes/<场地id>/` 一个文件夹一个场地（`scenedata.json` + `avatar.png`），
+    和球完全同一套规矩（`DataSeeder` 只补缺、`SceneLibrary` 扫描）。场地数据现在**只有出生范围**。
+  * **场地预制体**：墙和边框从 `game.tscn` 抽成了 `assets/scene/arenas/<场地id>.tscn`，
+    `Game` 按选中的 id 实例化（约定同名，Json 里不写路径）。
+  * `GameManager.SceneId` 记住选中的场地；`StartGame(球1, 球2, 场地id)` 不传就默认场地。
+  * 纯蓝占位头像已生成（64×64）。
+* **还没做**：**场地选择界面**（加一个 picker 场景 + 在选球页中下方摆一行 + 把选中的 id 传进 `StartGame`）。
+  你说这块不确定，所以底座铺好了，UI 等你点头。
+* ⚠️ **坑**：出生范围别压到墙里——第一次写的范围盖住了左侧墙，球一出生就被挤出去飞到场外（x = -379）。
 
 * **位置**：`Game.cs` 出生点写死 700/1220、墙面写在 `game.tscn`；而 `arena.json` 里是 300/1620。
 * **建议**：要么删掉 `arena.json`，要么把它接上（别让它一直是一份"看起来有用其实没读"的数据）。
 
-### 12. `resources/` 在 `res://` 里
+### 12. `resources/` 在 `res://` 里（✅ 已处理）
+
+* **现在**：草稿素材挪到了 `draft/`，已加进 `.gitignore`，并在里面放了 `.gdignore`
+  （引擎完全跳过它，不会导入、不会报错）。`resources/` 目录已清空删除。
+  正式素材一律进球自己的 `assets/data/balls/<球id>/resource/`。
 
 * **现象**：你的素材暂存区被引擎扫描并导入（生成了 `.import` 文件）；球正式用的素材应该在 `assets/data/balls/<球id>/resource/`。
 * **建议**：`resources/` 只当草稿区，或者干脆挪到工程外。
@@ -205,7 +239,8 @@ basic(Ball) ──→ 只认识 BallEvent/BallState，不认识任何具体组�
 | 想干什么 | 怎么做 |
 | --- | --- |
 | 加一颗球 | 建 `assets/data/balls/<id>/` → 写 `balldata.json` → 放 `resource/avatar.png`（Spine 球再放 atlas+骨架）→ 跑一次让补数据复制 |
-| 加一个组件 | `components/` 下写类（**文件名 = 类名**）→ `ComponentLibrary` 加一行 → 需要接线就在 `BallAssembler.Wire` 加分支 → 编号按 1xxx 移动 / 2xxx 攻击 / 3xxx 防御 / 4xxx 行为 / 5xxx 形态 / 6xxx 控制 |
+| 加一个组件 | `components/` 下写类（**文件名 = 类名**）→ 接线写在 `Bind` 里（注册事件、连信号、改形状）→ `ComponentLibrary` 加一行。**装配器不用动** |
+| 加一种蛋 | `eggs/` 下写 `Egg` 的子类（覆盖 `OnHit`）→ `EggLibrary` 加一行 → 球的 `2002.egg_id` 填编号 |
 | 编译 | `NUGET_PACKAGES=C:\Users\24807\.nuget\packages` 后 `dotnet build ShineBallGame.csproj`（编辑器的构建按钮不可用） |
 | 跑一局看日志 | `godot.windows.editor.x86_64.mono.console.exe --headless --path D:\shine-ball-game res://assets/scene/index.tscn --fixed-fps 60 --quit-after N`（`--fixed-fps` 必须加，否则倒计时/周期逻辑推不动） |
 | 直接打一场 | 临时脚本里 `GameManager.StartGame("球A", "球B")` 再跑帧（我这几次的验证都是这么做的） |
@@ -214,7 +249,8 @@ basic(Ball) ──→ 只认识 BallEvent/BallState，不认识任何具体组�
 ## 九、我建议的下一步顺序
 
 1. ~~**伤害载荷换成对象**（`DamageEvent`）~~ —— ✅ 已做（见自查第 6 条）
-2. **外观层收口**——四套入口变一套，后面加球/加蛋都省事。
-3. **事件注册统一**——消灭"有的在组件、有的在装配器"。
-4. **控制组件抢方向盘**——为"又减速又眩晕"做准备。
-5. **`arena.json` 接线或删掉**——别留"看起来有用"的死数据。
+2. ~~**外观层收口**~~ —— ✅ 已做（`BallLook`）。
+3. ~~**事件注册统一**~~ —— ✅ 已做（组件自己 `Bind`）。
+4. **控制组件抢方向盘**——`Slow` 已经有 `category` 字段，但"同类别按优先级选一个"的仲裁还没做（为"又减速又眩晕"准备）。
+5. **场景选择界面**——`arena.json` 还没人读；按你说的做成"和球一样在 `user://` 里组织 + 一个 avatar"，放在选球界面中下方。
+6. **蛋的到期消失**——没人碰过的蛋会一直躺着，要不要加"到期自动消失"。

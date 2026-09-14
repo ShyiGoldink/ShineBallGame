@@ -16,12 +16,16 @@ public static class UserData
     /// <summary>小球数据：一个球一个 Json 文件。</summary>
     public const string Balls = Root + "balls/";
 
+    /// <summary>场地数据：一个场地一个文件夹（`scenedata.json` + `avatar.png`）。</summary>
+    public const string Scenes = Root + "scenes/";
+
     /// <summary>创建所有数据目录。重复调用无害。</summary>
     public static void EnsureFolders()
     {
         Make(Root);
         Make(Scene);
         Make(Balls);
+        Make(Scenes);
     }
 
     /// <summary>把 user:// 路径换成系统里的真实路径。</summary>

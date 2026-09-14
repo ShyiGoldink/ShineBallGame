@@ -37,11 +37,24 @@ public partial class SelectPage : Control
         if (_left != null)
         {
             _left.Confirmed += OnPickerConfirmed;
+            _left.Unconfirmed += OnPickerUnconfirmed;
         }
 
         if (_right != null)
         {
             _right.Confirmed += OnPickerConfirmed;
+            _right.Unconfirmed += OnPickerUnconfirmed;
+        }
+    }
+
+    /// <summary>
+    /// 有玩家点了"重选"：先把"开始游戏"重新禁掉，等两边都重新确认过再放开。
+    /// </summary>
+    private void OnPickerUnconfirmed()
+    {
+        if (_start != null)
+        {
+            _start.Disabled = true;
         }
     }
 

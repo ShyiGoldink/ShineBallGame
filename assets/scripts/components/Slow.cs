@@ -25,6 +25,19 @@ public partial class Slow : BallComponent
     /// <summary>速度压到原先的多少。0.3 = 慢到三成。</summary>
     public float SpeedScale = 0.3f;
 
+    /// <summary>
+    /// 控制类别。将来一颗球上可能挂多个控制类组件（减速、眩晕……），
+    /// **同类别之间才谈得上"谁更强"**，不同类别应该各管各的。
+    /// 仲裁规则见 `BallControl.PickDriver`。
+    /// </summary>
+    public string Category = "slow";
+
+    /// <summary>类别的优先级：不同类别之间谁说了算（大的赢）。眩晕那类会配得比减速高。</summary>
+    public int CategoryPriority = 100;
+
+    /// <summary>同类别的强度（大的赢）。减速这里默认按"减得多狠"算：0.3 倍 → 强度 70。</summary>
+    public int Strength = -1;
+
     private Ball _ball;
     private bool _controlling;
 
@@ -35,12 +48,27 @@ public partial class Slow : BallComponent
     {
         Priority = JsonTool.GetValue(parameters, "priority", Priority);
         SpeedScale = JsonTool.GetValue(parameters, "speed_scale", SpeedScale);
+        Category = JsonTool.GetValue(parameters, "category", Category);
+        CategoryPriority = JsonTool.GetValue(parameters, "category_priority", CategoryPriority);
+        Strength = JsonTool.GetValue(parameters, "strength", Strength);
     }
 
-    public override void _Ready()
+    public override string ControlCategory => Category;
+
+    public override int ControlCategoryPriority => CategoryPriority;
+
+    /// <summary>没显式配 strength 就按减速比例折算：减得越狠越强（0.3 倍 → 70）。</summary>
+    public override int ControlStrength =>
+        Strength >= 0 ? Strength : Mathf.RoundToInt((1f - SpeedScale) * 100f);
+
+    /// <summary>
+    /// 装配时接线：订"状态变化"（受控一到就接手方向盘）。
+    /// 如果挂上来的时候球已经在受控里（少见），也照样按减速处理。
+    /// </summary>
+    public override void Bind(Ball ball, string configId)
     {
-        _ball = GetParent() as Ball;
-        if (_ball == null)
+        _ball = ball;
+        if (ball == null)
         {
             GD.PushError($"[{Type}] 组件没挂在球下面，接不了方向盘。");
             return;
@@ -48,7 +76,6 @@ public partial class Slow : BallComponent
 
         _ball.Events.Register(EventName.state_changed, new EventResponseFunction { priority = Priority, action = OnStateChanged });
 
-        // 挂上来的时候就已经在受控里（少见），照样按减速处理
         if (_ball.State == BallState.Controlled)
         {
             BeginControl();
@@ -102,8 +129,9 @@ public partial class Slow : BallComponent
 
     public override void _PhysicsProcess(double delta)
     {
-        // 受控期间由我驱动球（移动类组件在受控状态里是不动的）
-        if (_controlling)
+        // 受控期间由我驱动球（移动类组件在受控状态里是不动的）。
+        // 但方向盘只有一根：如果这会儿别人（比如眩晕）更强，就别抢——这就是"阻塞"。
+        if (_controlling && BallControl.PickDriver(_ball) == this)
         {
             BallMovement.Drive(_ball, (float)delta);
         }

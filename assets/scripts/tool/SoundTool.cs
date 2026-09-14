@@ -23,55 +23,16 @@ public static class SoundTool
 
     private static readonly Dictionary<string, AudioStream> Cache = new();
 
-    /// <summary>没写后缀时按这个顺序试，省得作者还要记住自己导出的是什么格式。</summary>
+    /// <summary>音效没写后缀时按这个顺序试，省得作者还要记住自己导出的是什么格式。</summary>
     private static readonly string[] Extensions = { ".ogg", ".wav", ".mp3" };
 
-    /// <summary>按上面的规则找出真实存在的文件；找不到返回 null。</summary>
+    /// <summary>
+    /// 找音效文件：先看球自己的 `resource/`，再看 `user://` 根目录；不写后缀就试 `.ogg`/`.wav`/`.mp3`。
+    /// 规则和别的资源完全一样，实现在 `BallLibrary.Find`（找法只有一处，改只改那儿）。
+    /// </summary>
     public static string Resolve(string sound, string ballId)
     {
-        if (string.IsNullOrEmpty(sound))
-        {
-            return null;
-        }
-
-        if (sound.Contains("://"))
-        {
-            return sound;
-        }
-
-        foreach (var name in Candidates(sound))
-        {
-            if (!string.IsNullOrEmpty(ballId))
-            {
-                var inBall = UserData.Balls + ballId + "/resource/" + name;
-                if (FileAccess.FileExists(inBall))
-                {
-                    return inBall;
-                }
-            }
-
-            var inUser = UserData.Root + name;
-            if (FileAccess.FileExists(inUser))
-            {
-                return inUser;
-            }
-        }
-
-        return null;
-    }
-
-    /// <summary>名字本身，外加（没写后缀时）补上几种常见后缀的变体。</summary>
-    private static IEnumerable<string> Candidates(string sound)
-    {
-        yield return sound;
-
-        if (string.IsNullOrEmpty(System.IO.Path.GetExtension(sound)))
-        {
-            foreach (var extension in Extensions)
-            {
-                yield return sound + extension;
-            }
-        }
+        return BallLibrary.Find(sound, ballId, Extensions);
     }
 
     /// <summary>加载并缓存。找不到文件、后缀不认识、解析失败都返回 null。</summary>
