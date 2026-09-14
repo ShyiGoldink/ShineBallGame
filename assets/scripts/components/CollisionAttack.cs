@@ -75,7 +75,8 @@ public partial class CollisionAttack : BallComponent
         {
             return;
         }
-        enemy.TakeDamage(Damage);
+        // 伤害带上来源：谁打的（自己）+ 哪种攻击
+        enemy.TakeDamage(new DamageEvent(enemy, Damage, Type, _ball));
 
         // 音效跟着"这一下打出去"走：放到扣血之后，前面那些不算数的碰撞都不会响
         SoundTool.PlayOnce(this, Sound, _ball?.Id);

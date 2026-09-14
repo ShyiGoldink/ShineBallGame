@@ -15,16 +15,21 @@ public partial class NormalDamage : BallComponent
 
     public override string Description => "受伤链的最后一环：直接扣血，然后阻塞";
 
-    /// <summary>事件处理函数：扣血，返回 false 表示后面的处理函数不再执行。</summary>
+    /// <summary>受伤链的最后一环：按事件里"还剩多少"扣血，然后返回 false 阻塞后面的处理函数。</summary>
     public bool OnTakeDamage(object arg)
     {
-        if (GetParent() is not Ball ball || arg is not float damage)
+        if (GetParent() is not Ball ball || arg is not DamageEvent hit)
         {
-            GD.PushError($"[{Type}] 扣血失败：组件没挂在球下面，或者收到的伤害不是 float。");
+            GD.PushError($"[{Type}] 扣血失败：组件没挂在球下面，或者收到的不是伤害事件。");
             return true; // 出问题就放行，别把后面的处理链堵死
         }
 
-        ball.Hp -= damage;
+        string from = hit.Source != null
+            ? $"{hit.Source.Name} 的 {hit.SourceType ?? "?"}"
+            : hit.SourceId != null ? $"{hit.SourceId} 的 {hit.SourceType ?? "?"}" : "未知来源";
+
+        GD.Print($"[伤害] {ball.Name} -{hit.Amount:0.#}（{from}）");
+        ball.Hp -= hit.Amount;
         return false;
     }
 }

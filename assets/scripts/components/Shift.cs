@@ -29,14 +29,17 @@ public partial class Shift : BallComponent
     /// <summary>隔几秒跳一次伤害。</summary>
     public float TickInterval = 1f;
 
-    /// <summary>每次跳多少：对方最大生命值 × 这个比例。</summary>
-    public float DamageRatio = 0.05f;
+    /// <summary>每次跳多少：对方最大生命值 × 这个比例（1/100）。</summary>
+    public float DamageRatio = 0.01f;
 
     /// <summary>单次伤害上限。</summary>
     public float DamageCap = 100f;
 
     /// <summary>蛋的阵营，由装配器填（跟下它的那颗球一样）。同阵营撞上来不算敌人。</summary>
     public int Group;
+
+    /// <summary>下蛋那颗球的 id，由装配器填。蛋自己不是球，但伤害要记在"谁下的蛋"头上。</summary>
+    public string OwnerId = string.Empty;
 
     private Area2D _egg;
     private Ball _target;
@@ -52,6 +55,7 @@ public partial class Shift : BallComponent
         DamageRatio = JsonTool.GetValue(parameters, "damage_ratio", DamageRatio);
         DamageCap = JsonTool.GetValue(parameters, "damage_cap", DamageCap);
         Group = JsonTool.GetValue(parameters, "group", Group);
+        OwnerId = JsonTool.GetValue(parameters, "owner", OwnerId);
     }
 
     public override void _Ready()
@@ -169,8 +173,9 @@ public partial class Shift : BallComponent
 
         // 伤害按"对面最大生命值的比例"算，再卡上限
         float damage = Mathf.Min(_target.MaxHp * DamageRatio, DamageCap);
-        GD.Print($"[{Type}] {_target.Name} 中毒跳伤 {damage:0.#}");
-        _target.TakeDamage(damage);
+
+        // 来源：蛋没有球身份，所以填"下蛋那颗球的 id"和"哪种攻击"（扣血那一步会打日志）
+        _target.TakeDamage(new DamageEvent(_target, damage, Type, null, OwnerId));
     }
 
     /// <summary>

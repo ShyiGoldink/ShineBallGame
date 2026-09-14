@@ -5,9 +5,11 @@
   "spine_scale": 0.53,
   "selfcomponents": {
     "3001": {},
-    "2002": { "cd": 8, "windup": 2, "attack_time": 5.5, "egg_id": 2003 },
+    "4003": { "sound": "pulipuli_attack" },
+    "2002": { "cd": 8, "windup": 5.2, "attack_time": 5.5, "egg_id": 2003 },
     "1001": { "speed": 750 },
-    "4001": {}
+    "4001": {},
+    "5001": { "radius": 75 }
   },
   "enemycomponents": {
     "6001": { "speed_scale": 0.3 },

@@ -11,10 +11,10 @@
 
 | 项 | 数 |
 | --- | --- |
-| C# 文件 | 36 个，约 3300 行 |
+| C# 文件 | 39 个，约 3650 行 |
 | 场景 | 6 个（`index` / `game` / `NormalBall` / `BallPicker` / `BallButton` / `BallDataPanel`） |
 | 球 | 2 颗（`NormalBall` 贴图球、`pulipuli` Spine 球） |
-| 组件 | 9 个（1001 / 2001 / 2002 / 2003 / 4001 / 4002 / 5001 / 5002 / 6001） |
+| 组件 | 11 个（1001 移动 / 2001 碰撞 / 2002 下蛋 / 2003 屎蛋 / 3001 条件无敌 / 4001 受伤 / 4002 中毒染色 / 4003 进状态音效 / 5001 碰撞箱 / 5002 Spine 外观 / 6001 减速） |
 | 外部依赖 | Godot 4.7.1（带 C# 的自编译版）+ Spine GDExtension（`addons/spine-godot`） |
 
 玩法一句话：选球 → 3 秒倒计时 → 两颗球按组件打（碰撞、下蛋、减速、中毒）→ 只剩一个阵营时结算。
@@ -26,6 +26,7 @@
 | `assets/scripts/basic/Ball.cs` | 小球本体：血量、五个状态、受控/攻击的计时、事件总线入口 | 所有组件、装配器、面板 |
 | `assets/scripts/basic/BallEvent.cs` | 轻量事件总线：按优先级排、返回 false 阻塞 | `Ball.Events`，各组件注册 |
 | `assets/scripts/basic/BallComponent.cs` | 组件基类（自描述：编号/类型名/说明/前置） | 所有组件 |
+| `assets/scripts/basic/DamageEvent.cs` | 伤害事件：还剩多少(`Amount`) / 原始值(`Original`) / 谁打的(`Source`/`SourceId`) / 哪种攻击(`SourceType`) | `Ball.TakeDamage`、受伤链上的每个组件 |
 | `assets/scripts/basic/BallMovement.cs` | "推进 + 撞墙反弹"这一小段共用逻辑 | `NormalMove`（移动态）、`Slow`（受控态） |
 | `assets/scripts/basic/BallState.cs` | 五个状态枚举（登场/移动/受控/攻击/死亡） | `Ball`、各组件的状态门控 |
 | `assets/scripts/basic/DamagePriority.cs` | 受伤链优先级表（1000 无敌 … 500 一般扣血） | 装配器注册、组件参考 |
@@ -48,7 +49,7 @@
 | `assets/data/scene/arena.json` | 场地参数 | **目前没人读** |
 | `assets/theme/ui_theme.tres` | 中文字体主题 | 所有界面 |
 | `resources/` | 你放素材的**暂存区**（`avatar.png`、`shit.png`） | `Shift` 默认素材指向这里；注意它在 `res://` 里，会被引擎导入 |
-| `addons/spine-godot/` | Spine GDExtension（全平台二进制） | `SpineLook` 动态调用 |
+| `addons/spine-godot/` | Spine GDExtension（全平台二进制，**53MB，没入库**） | `SpineLook` 动态调用；只留 windows 版还是全提交，待定 |
 | `log/` | 文档（本文件、`FunctionGuide.md`、`README.md`） | 人 |
 
 ## 三、一局的完整生命周期
@@ -84,7 +85,7 @@ ui  ──→  tool, basic            （界面只用工具和局管理器）
 Game ──→  tool(BallData), basic(BallAssembler)
 BallAssembler ──→ components(ComponentLibrary + 每个组件的类型)
               └─→ tool(UserData, BallLibrary, SoundTool)
-components ──→ basic(Ball, BallMovement, BallEvent, EventName, DamagePriority)
+components ──→ basic(Ball, BallMovement, BallEvent, EventName, DamagePriority, DamageEvent)
             └─→ tool(JsonTool, BallLibrary, UserData, SoundTool)
 basic(Ball) ──→ 只认识 BallEvent/BallState，不认识任何具体组件
 ```
@@ -99,15 +100,16 @@ basic(Ball) ──→ 只认识 BallEvent/BallState，不认识任何具体组�
 | 选球 / 开局 / 倒计时 / 结算 / 暂停 / 回主菜单 | ✅ 实机通过 | |
 | 五状态状态机 | ✅ 都在用 | 受控、攻击的计时在 `Ball` 里 |
 | 事件总线（优先级 + 阻塞） | ✅ 实机通过 | |
-| 组件 1001 / 2001 / 2002 / 2003 / 4001 / 4002 / 5001 / 5002 / 6001 | ✅ 都跑过 | 见组件总表 |
+| 组件（11 个，见组件总表） | ✅ 都跑过 | 移动 / 碰撞 / 下蛋 / 屎蛋 / 条件无敌 / 受伤 / 中毒染色 / 进状态音效 / 碰撞箱 / Spine 外观 / 减速 |
 | 外观：`type=1` 贴图 / `type=2` Spine | ✅ 实机通过 | Spine 按状态切动画，缺动画走兜底链 |
 | 音效 | ⚠️ 只接了 `2001` | `SoundTool` 通用，别的组件想用得自己调 |
 | 控制（减速） | ✅ 实机通过 | 减速 = 受控状态下由 6001 接手驱动（30%） |
 | 防御类 | ⚠️ 只有 `3001` 条件无敌 | 护盾 / 真伤 / 沉默还只有优先级位 |
+| 伤害载荷 | ✅ `DamageEvent` | 带来源、可被中途改写（`Amount`）；扣血统一在 `4001`，并打 `[伤害]` 日志 |
 | `arena.json`（场地参数） | ❌ 没人读 | `Game.cs` 里出生点是写死的 |
 | `BallState.Attack` 的"动作" | ⚠️ 只有下蛋用 | 攻击状态本身已经可用 |
 | 蛋（`2003`） | ✅ 实机通过 | 普通节点（不是球）：不进 `balls` 组、不参与胜负；参数只能改组件默认值 |
-| 版本管理 | ⚠️ 一大批没提交 | 见下面审计项 14 |
+| 版本管理 | 🟡 随手提交 | 每批改完就 `feat:` / `fix:` 提交，别攒着（见自查第 13 条） |
 
 ## 七、耦合与偏离自查（明天重点看这节）
 
@@ -147,12 +149,15 @@ basic(Ball) ──→ 只认识 BallEvent/BallState，不认识任何具体组�
 * **现象**：两颗同种球相撞时引擎会改 `Name`（日志里出现过 `@CharacterBody2D@41`），`Id` 不受影响。
 * **建议**：以后统一用 `Id`；`Name` 只当调试标签。可以再顺手给 `Name` 加序号，日志好认。
 
-### 6. 伤害载荷是裸 `float`
+### 6. 伤害载荷是裸 `float`（✅ 已处理）
 
-* **位置**：`Ball.TakeDamage(float)` → `Events.Trigger(take_damage, damage)`。
-* **现象**：没有伤害来源、也没有"剩余伤害"的概念。
-* **后果**：护盾（700，非阻塞）想"扣掉一部分、剩下的继续往后传"**做不到**；"只有毒伤才触发中毒"也做不到。
-* **建议**：尽早换成 `DamageEvent { Amount, Source, ... }`。**这是挡着整个 3xxx 防御类的那块石头**。
+* **当时**：`Ball.TakeDamage(float)` → `Events.Trigger(take_damage, damage)`，没有来源、也没有"剩余伤害"的概念，护盾那类组件根本没法写。
+* **现在**：载荷是 `DamageEvent`（`basic/DamageEvent.cs`）：
+  * `Amount` 可变 → 减伤/护盾"扣一部分再放行"能写了；`4001` 按它扣血。
+  * `Original` 只读 → 按原始伤害算的组件（护盾）有依据。
+  * `Source` / `SourceId` / `SourceType` → 能区分"谁打的、哪种攻击"（蛋的伤害记在下蛋那颗球头上）。
+  * `TakeDamage` 返回 `true/false` → 调用方知道"这次有没有被挡下来"。
+* **还剩**：3xxx 里除了 `3001` 之外的组件（护盾/真伤/沉默）还没做，但**位置已经留好了**（`DamagePriority` 里的 700/800/900）。
 
 ### 7. 控制类组件不能共存
 
@@ -189,10 +194,11 @@ basic(Ball) ──→ 只认识 BallEvent/BallState，不认识任何具体组�
 * **现象**：你的素材暂存区被引擎扫描并导入（生成了 `.import` 文件）；球正式用的素材应该在 `assets/data/balls/<球id>/resource/`。
 * **建议**：`resources/` 只当草稿区，或者干脆挪到工程外。
 
-### 13. 未提交的改动
+### 13. 版本管理
 
-本次会话新增/改动的东西都还在工作区（`git status` 有 12 个改过的文件 + 一堆未跟踪的新文件：`addons/`、`pulipuli/`、`CircleShape.cs` / `EggAttack.cs` / `Shift.cs` / `Slow.cs` / `Poison.cs` / `SpineLook.cs` / `SoundTool.cs` / `BallMovement.cs` 等）。
-**建议明天审计前先提交一次**，这样你改的时候有基线可比。
+* 已经提交过两批：`feat:`（接 Spine 外观 + 一批组件）、`fix:`（修蛋与 UI 层级）。
+* 目前工作区里是最近这批（伤害事件、球尺寸、音效、血条等），**审计前先提交一次**，这样你改的时候有基线可比。
+* `addons/`（53MB Spine 二进制）一直没入库，等你定：全提交 / 只留 windows 版 / 不入库（不入库的话别人拉下来要自己放扩展，代码有兜底会回落贴图）。
 
 ## 八、快速用法（细节看 `FunctionGuide.md`）
 
@@ -207,7 +213,7 @@ basic(Ball) ──→ 只认识 BallEvent/BallState，不认识任何具体组�
 
 ## 九、我建议的下一步顺序
 
-1. **伤害载荷换成对象**（`DamageEvent`）——它挡着 3xxx 一整套和"按来源区分"。
+1. ~~**伤害载荷换成对象**（`DamageEvent`）~~ —— ✅ 已做（见自查第 6 条）
 2. **外观层收口**——四套入口变一套，后面加球/加蛋都省事。
 3. **事件注册统一**——消灭"有的在组件、有的在装配器"。
 4. **控制组件抢方向盘**——为"又减速又眩晕"做准备。

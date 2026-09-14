@@ -23,7 +23,10 @@ public static class SoundTool
 
     private static readonly Dictionary<string, AudioStream> Cache = new();
 
-    /// <summary>按上面的规则找出真实路径；没配置就返回 null。</summary>
+    /// <summary>没写后缀时按这个顺序试，省得作者还要记住自己导出的是什么格式。</summary>
+    private static readonly string[] Extensions = { ".ogg", ".wav", ".mp3" };
+
+    /// <summary>按上面的规则找出真实存在的文件；找不到返回 null。</summary>
     public static string Resolve(string sound, string ballId)
     {
         if (string.IsNullOrEmpty(sound))
@@ -36,16 +39,39 @@ public static class SoundTool
             return sound;
         }
 
-        if (!string.IsNullOrEmpty(ballId))
+        foreach (var name in Candidates(sound))
         {
-            var inBall = UserData.Balls + ballId + "/resource/" + sound;
-            if (FileAccess.FileExists(inBall))
+            if (!string.IsNullOrEmpty(ballId))
             {
-                return inBall;
+                var inBall = UserData.Balls + ballId + "/resource/" + name;
+                if (FileAccess.FileExists(inBall))
+                {
+                    return inBall;
+                }
+            }
+
+            var inUser = UserData.Root + name;
+            if (FileAccess.FileExists(inUser))
+            {
+                return inUser;
             }
         }
 
-        return UserData.Root + sound;
+        return null;
+    }
+
+    /// <summary>名字本身，外加（没写后缀时）补上几种常见后缀的变体。</summary>
+    private static IEnumerable<string> Candidates(string sound)
+    {
+        yield return sound;
+
+        if (string.IsNullOrEmpty(System.IO.Path.GetExtension(sound)))
+        {
+            foreach (var extension in Extensions)
+            {
+                yield return sound + extension;
+            }
+        }
     }
 
     /// <summary>加载并缓存。找不到文件、后缀不认识、解析失败都返回 null。</summary>
@@ -54,6 +80,7 @@ public static class SoundTool
         var path = Resolve(sound, ballId);
         if (path == null)
         {
+            GD.PushWarning($"[音效] 找不到音效文件：{sound}（找过球自己的 resource 目录和 user:// 根目录）");
             return null;
         }
 

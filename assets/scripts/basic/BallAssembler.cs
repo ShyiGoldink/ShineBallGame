@@ -16,6 +16,10 @@ public static class BallAssembler
     /// <summary>预制体里命中圈 / 碰撞圈的默认比例（90 / 75）。只写了碰撞圈时按这个比例跟上。</summary>
     private const float HitRadiusScale = 1.2f;
 
+    /// <summary>所有球在画面上的统一显示尺寸（像素，按素材长边算）。
+    /// 碰撞圈半径是它的一半（50，写在预制体里），命中圈再按 1.2 倍（60）——改这里记得一起改预制体。</summary>
+    private const float BallDisplaySize = 100f;
+
     /// <summary>蛋的节点组。蛋不是球、不在 balls 组里，要单独找它们（比如结算时清场）。</summary>
     public const string EggsGroup = "eggs";
 
@@ -44,6 +48,9 @@ public static class BallAssembler
 
         SetAppearance(ball, data);
         int count = AttachComponents(ball, data.SelfComponents);
+
+        // 血条得等所有组件挂完再摆——5001 可能刚刚改过球的碰撞圈，位置要按最终大小算
+        PlaceHealthBar(ball);
 
         GD.Print($"[装配] {data.Id}（{data.Name}）血量 {data.Hp}，自己的组件 {count} 个");
         return ball;
@@ -202,7 +209,7 @@ public static class BallAssembler
     /// 因为不是球，它不进 `balls` 组、不参与胜负判定、没有血量，也不是实体
     /// （别人碰不到它，只能它碰到别人）。返回 null 表示组件编号不存在。
     /// </summary>
-    public static Node2D BuildEgg(Vector2 position, int group, int componentId)
+    public static Node2D BuildEgg(Vector2 position, int group, int componentId, string ownerId = null)
     {
         var component = ComponentLibrary.Create(componentId);
         if (component == null)
@@ -233,8 +240,12 @@ public static class BallAssembler
             Shape = new CircleShape2D { Radius = 1f },
         });
 
-        // 阵营得让组件知道，不然蛋会对自己人开火
-        component.ApplyParams(new Godot.Collections.Dictionary { { "group", group } });
+        // 阵营得让组件知道，不然蛋会对自己人开火；owner 是为了让伤害记得住"谁下的蛋"
+        component.ApplyParams(new Godot.Collections.Dictionary
+        {
+            { "group", group },
+            { "owner", ownerId ?? string.Empty },
+        });
 
         egg.AddChild(component);
         return egg;
@@ -280,6 +291,34 @@ public static class BallAssembler
         return true;
     }
 
+    /// <summary>
+    /// 摆血条：**大小固定**（所有球都是 160×14，跟预制体里一致），只有位置跟着球走——
+    /// 条挂在球底下方 10 像素，所以 100px 的球和 150px 的球都不会被自己的血条盖住。
+    /// </summary>
+    private static void PlaceHealthBar(Ball ball)
+    {
+        var bar = ball.GetNodeOrNull<ProgressBar>("HealthBar");
+        if (bar == null)
+        {
+            return;
+        }
+
+        float radius = 50f; // 拿不到形状时的兜底
+        if (ball.GetNodeOrNull<CollisionShape2D>(BodyShapePath)?.Shape is CircleShape2D circle)
+        {
+            radius = circle.Radius;
+        }
+
+        const float halfWidth = 80f; // 宽 160，固定
+        const float gap = 10f;
+        const float height = 14f;
+
+        bar.OffsetLeft = -halfWidth;
+        bar.OffsetRight = halfWidth;
+        bar.OffsetTop = radius + gap;
+        bar.OffsetBottom = radius + gap + height;
+    }
+
     /// <summary>球体贴图按球自己的目录扫出来。</summary>
     private static void SetBodyTexture(Ball ball, string ballId)
     {
@@ -294,6 +333,10 @@ public static class BallAssembler
         if (texture != null)
         {
             body.Texture = texture;
+
+            // 按长边缩到统一显示尺寸：素材画多大都行，场上所有球一样大
+            float longest = Mathf.Max(texture.GetWidth(), texture.GetHeight());
+            body.Scale = Vector2.One * (BallDisplaySize / longest);
         }
     }
 }

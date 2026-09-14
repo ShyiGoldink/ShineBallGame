@@ -24,6 +24,8 @@ public static class ComponentLibrary
                 return new NormalDamage();
             case 4002:
                 return new Poison();
+            case 4003:
+                return new StateSound();
             case 5001:
                 return new CircleShape();
             case 5002:

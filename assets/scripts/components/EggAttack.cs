@@ -27,9 +27,6 @@ public partial class EggAttack : BallComponent
     /// <summary>蛋上挂哪个组件（组件编号）。</summary>
     public int EggId;
 
-    /// <summary>蛋的出生位置：以球心为原点往下挪这么多像素（球半径是 75，所以蛋正好落在球底）。</summary>
-    private static readonly Vector2 EggSpawnOffset = new Vector2(0f, 75f);
-
     private Ball _ball;
     private float _cdLeft;
     private float _windupLeft;
@@ -133,7 +130,7 @@ public partial class EggAttack : BallComponent
             return;
         }
 
-        var egg = BallAssembler.BuildEgg(_ball.Position + EggSpawnOffset, _ball.Group, EggId);
+        var egg = BallAssembler.BuildEgg(_ball.Position + new Vector2(0f, EggDropDistance()), _ball.Group, EggId, _ball.Id);
         if (egg == null)
         {
             return;
@@ -142,5 +139,19 @@ public partial class EggAttack : BallComponent
         parent.AddChild(egg);
 
         GD.Print($"[{Type}] {_ball.Name} 产下一颗蛋（组件 {EggId}）");
+    }
+
+    /// <summary>
+    /// 蛋落在球的脚下：往下挪的距离跟着**这颗球自己的碰撞圈半径**走
+    /// （球多大大就挪多少，所以 100px 的球挪 50、150px 的球挪 75，不用写死数字）。
+    /// </summary>
+    private float EggDropDistance()
+    {
+        if (_ball.GetNodeOrNull<CollisionShape2D>("Shape")?.Shape is CircleShape2D circle)
+        {
+            return circle.Radius;
+        }
+
+        return 0f; // 找不到形状就落在球心上，总比乱挪好
     }
 }

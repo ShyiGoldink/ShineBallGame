@@ -12,6 +12,8 @@ public partial class HealthBar : ProgressBar
     public override void _Ready()
     {
         ShowPercentage = false;
+
+        // 大小固定（所有球一样大）；位置由装配器按球的大小摆，见 BallAssembler.PlaceHealthBar
         CustomMinimumSize = new Vector2(160f, 14f);
 
         var background = new StyleBoxFlat
