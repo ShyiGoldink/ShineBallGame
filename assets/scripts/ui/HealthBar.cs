@@ -13,7 +13,8 @@ public partial class HealthBar : ProgressBar
     {
         ShowPercentage = false;
 
-        // 大小固定（所有球一样大）；位置由装配器按球的大小摆，见 BallAssembler.PlaceHealthBar
+        // 大小固定（所有球一样大，条都按这个宽度对齐）；
+        // 位置由条区（BallLayout）排，整片条区的位置见 BallLook.PlaceLayout
         CustomMinimumSize = new Vector2(160f, 14f);
 
         var background = new StyleBoxFlat

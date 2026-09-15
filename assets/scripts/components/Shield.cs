@@ -93,4 +93,19 @@ public partial class Shield : BallComponent
 
         _shieldLeft = Mathf.Min(Amount, _shieldLeft + Regen * (float)delta);
     }
+
+    /// <summary>
+    /// 往盾里灌一笔（**别的组件灌盾用，比如无下限 `3004`**），补到上限为止。
+    /// 咒力消耗、什么时候灌、灌多少，都是调用方的事——这里只管把盾加上去，
+    /// 所以"无下限"不用再实现一遍护盾的逻辑。
+    /// </summary>
+    public void Restore(float amount)
+    {
+        if (amount <= 0f)
+        {
+            return;
+        }
+
+        _shieldLeft = Mathf.Min(Amount, _shieldLeft + amount);
+    }
 }

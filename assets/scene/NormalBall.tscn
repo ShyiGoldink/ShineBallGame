@@ -1,9 +1,10 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://assets/scripts/basic/Ball.cs" id="1_ball"]
 [ext_resource type="Texture2D" path="res://assets/scene/NormalBall_body.png" id="2_body"]
 [ext_resource type="Script" path="res://assets/scripts/ui/HealthBar.cs" id="3_health"]
 [ext_resource type="Script" path="res://assets/scripts/ui/ShieldBar.cs" id="4_shield"]
+[ext_resource type="Script" path="res://assets/scripts/basic/BallLayout.cs" id="5_layout"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_ball"]
 radius = 50.0
@@ -26,19 +27,22 @@ shape = SubResource("CircleShape2D_ball")
 [node name="Shape" type="CollisionShape2D" parent="HitArea"]
 shape = SubResource("CircleShape2D_hit")
 
-[node name="HealthBar" type="ProgressBar" parent="."]
+[node name="Layout" type="Node2D" parent="."]
+script = ExtResource("5_layout")
+
+[node name="HealthBar" type="ProgressBar" parent="Layout"]
 offset_left = -80.0
-offset_top = 85.0
+offset_top = 0.0
 offset_right = 80.0
-offset_bottom = 99.0
+offset_bottom = 14.0
 mouse_filter = 2
 script = ExtResource("3_health")
 
-[node name="ShieldBar" type="ProgressBar" parent="."]
+[node name="ShieldBar" type="ProgressBar" parent="Layout"]
 visible = false
 offset_left = -80.0
-offset_top = 103.0
+offset_top = 18.0
 offset_right = 80.0
-offset_bottom = 111.0
+offset_bottom = 26.0
 mouse_filter = 2
 script = ExtResource("4_shield")

@@ -44,6 +44,7 @@ public partial class Ball : CharacterBody2D
     	get { return _hp; }
     	set
 		{
+			float before = _hp;
 			_hp = value;
 			RefreshHealthBar();
 
@@ -51,6 +52,14 @@ public partial class Ball : CharacterBody2D
 			if (_hp <= 0f)
 			{
 				ChangeState(BallState.Dead);
+			}
+
+			// 血量**真的变了**才喊一声（载荷是这次变了多少：正数回血、负数掉血）。
+			// 想"只在受伤 / 回血时做点什么"的组件订这个事件，别每帧去比血量。
+			// 放到死亡判定后面：订阅者拿到通知时，状态已经是最终的了。
+			if (_hp != before)
+			{
+				Events.Trigger(EventName.hp_changed, _hp - before);
 			}
 		}
 	}
@@ -66,21 +75,13 @@ public partial class Ball : CharacterBody2D
 		}
 	}
 
-	/// <summary>把当前血量推给身上的血条；身上没有血条就什么都不做。</summary>
+	/// <summary>
+	/// 把当前血量推给身上的血条；身上没有血条就什么都不做。
+	/// 血条挂在条区（`BallLayout`）下面，所以要问条区要，不能只扫自己的直接子节点。
+	/// </summary>
 	private void RefreshHealthBar()
 	{
-		if (_healthBar == null)
-		{
-			foreach (var child in GetChildren())
-			{
-				if (child is HealthBar bar)
-				{
-					_healthBar = bar;
-					break;
-				}
-			}
-		}
-
+		_healthBar ??= BallLook.Layout(this)?.GetNodeOrNull<HealthBar>(BallLook.HealthBarName);
 		_healthBar?.SetHealth(_hp, _maxHp);
 	}
 

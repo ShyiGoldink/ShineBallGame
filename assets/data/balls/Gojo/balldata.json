@@ -1,0 +1,23 @@
+{
+  "name": "五条悟",
+  "hp": 1200,
+  "type": 1,
+  "selfcomponents": {
+    "1001": { "speed": 700 },
+    "2004": { "damage": 500, "damage_burnout": 100, "black_flash_chance": 0.04, "black_flash_multiplier": 2.5, "sound": "hit" },
+    "3002": { "amount": 600, "regen": 0 },
+    "3003": {},
+    "3004": { "regen": 800, "cost": 100 },
+    "4001": {},
+    "4005": {},
+    "7001": {
+      "amount": 1000,
+      "regen": 20,
+      "cost_rate": 0.01,
+      "reverse_rate": 100,
+      "black_flash": { "reverse_rate": 50 }
+    },
+    "7002": {}
+  },
+  "enemycomponents": {}
+}

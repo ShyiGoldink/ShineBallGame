@@ -54,10 +54,10 @@ public partial class ShieldGauge : BallComponent
         _ball = ball;
         _shield = shield;
 
-        // 两处显示：面板上一行数 + 球身上那根条（条的位置和显隐归外观层管）
+        // 两处显示：面板上一行数 + 球身上那根条（条在条区里，显隐和位置归外观层管）
         ball.Readouts.Add(new BallReadout(DisplayName, () => $"{shield.Left:0} / {shield.Max:0}"));
-        BallLook.PlaceShieldBar(ball);
-        PushToBar(); // 先摆一次，别等第一帧
+        BallLook.ShowShieldBar(ball); // 打开那根条；条区自己会重排
+        PushToBar(); // 先推一次，别等第一帧
 
         // 这里**不要**把当前值读出来打日志：同一个球上，护盾组件的 Bind 可能还没跑
         // （取决于 Json 里的书写顺序），这一刻的值还不是最终值。面板拉到的是真值。

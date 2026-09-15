@@ -1,0 +1,12 @@
+{
+  "name": "沙包球",
+  "hp": 20000,
+  "type": 1,
+  "selfcomponents": {
+    "2001": { "damage": 100, "sound": "hit" },
+    "1001": { "speed": 900 },
+    "4006": { "min_hp": 1 },
+    "4007": { "trigger_hp": 1, "delay": 1 }
+  },
+  "enemycomponents": {}
+}

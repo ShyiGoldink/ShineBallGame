@@ -53,8 +53,8 @@ public static class BallAssembler
         BallLook.Apply(ball, data); // 外观：type=2 走 Spine，其它走贴图；Spine 缺东西自动回落
         int count = AttachComponents(ball, data.SelfComponents, data.Id);
 
-        // 血条等所有组件挂完再摆：5001 可能刚改过碰撞圈，位置得按最终半径算
-        BallLook.PlaceHealthBar(ball);
+        // 球身上那片条等所有组件挂完再摆：5001 可能刚改过碰撞圈，位置得按最终半径算
+        BallLook.PlaceLayout(ball);
 
         GD.Print($"[装配] {ball.Name}（{data.Name}）血量 {data.Hp}，自己的组件 {count} 个");
         return ball;

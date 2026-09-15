@@ -3,6 +3,9 @@ using Godot;
 /// <summary>
 /// 按编号创建组件。Json 里 selfcomponents / enemycomponents 的键就是这个编号，
 /// 加新组件时在这里补一行。
+///
+/// 编号段：1xxx 移动 / 2xxx 攻击 / 3xxx 防御 / 4xxx 行为 / 5xxx 形态 / 6xxx 控制 /
+/// 7xxx 咒力（资源：池子这种"给别的组件当底子"的东西）。
 /// </summary>
 public static class ComponentLibrary
 {
@@ -16,12 +19,16 @@ public static class ComponentLibrary
                 return new CollisionAttack();
             case 2002:
                 return new EggAttack();
+            case 2004:
+                return new BasicAttack();
             case 3001:
                 return new ConditionalImmune();
             case 3002:
                 return new Shield();
             case 3003:
                 return new ShieldGauge();
+            case 3004:
+                return new Limitless();
             case 4001:
                 return new NormalDamage();
             case 4002:
@@ -30,10 +37,20 @@ public static class ComponentLibrary
                 return new StateSound();
             case 4004:
                 return new PoisonDamage();
+            case 4005:
+                return new ReverseTechnique();
+            case 4006:
+                return new SandbagDamage();
+            case 4007:
+                return new HpRefill();
             case 5001:
                 return new CircleShape();
             case 6001:
                 return new Slow();
+            case 7001:
+                return new CursedEnergy();
+            case 7002:
+                return new CursedEnergyGauge();
             default:
                 GD.PushError($"[装配] 没有编号为 {id} 的组件。");
                 return null;

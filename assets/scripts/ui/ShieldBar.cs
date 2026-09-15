@@ -3,8 +3,9 @@ using Godot;
 /// <summary>
 /// 护盾条：球身上那根细条（在血条正下方），显示护盾还剩多少。
 ///
-/// **显隐和位置不在这里**——那是外观层 `BallLook` 的事（`PlaceShieldBar` / `SetShield`）：
-/// 只有挂了 `3003 defense.shield_gauge` 的球才会让它出现，没护盾的球看不到它。
+/// **显隐和位置不在这里**——显隐由 `3003 defense.shield_gauge` 通过外观层
+/// （`BallLook.ShowShieldBar`）打开，位置由条区 `BallLayout` 排（血条下面挨着排），
+/// 所以没护盾的球看不到它、有护盾的球也不会和别的条叠在一起。
 /// 这里只管自己的样子：底色、青色填充、圆角。
 /// </summary>
 public partial class ShieldBar : ProgressBar
@@ -18,7 +19,7 @@ public partial class ShieldBar : ProgressBar
     {
         ShowPercentage = false;
 
-        // 大小固定（跟血条一样宽、细一点）；位置由 BallLook 按球的碰撞圈摆
+        // 大小固定（跟血条一样宽、细一点）；位置由条区 BallLayout 排
         CustomMinimumSize = new Vector2(160f, 8f);
 
         var background = new StyleBoxFlat

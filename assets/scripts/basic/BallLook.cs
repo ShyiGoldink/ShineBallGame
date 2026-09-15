@@ -8,7 +8,7 @@ using Godot;
 ///
 /// 尺寸怎么定：`DisplaySize` 是球在场上的目标大小（像素，按素材长边算）。
 /// 贴图和骨架都缩进这个尺寸，而**碰撞圈不在这里写死**——半径由预制体或 `5001`
-/// 决定，`PlaceHealthBar` 再按最终半径把血条摆好。
+/// 决定，`PlaceLayout` 再按最终半径把球身上那片条（血条 / 护盾条 / 咒力条…）摆好。
 /// </summary>
 public static class BallLook
 {
@@ -18,16 +18,13 @@ public static class BallLook
     /// <summary>命中圈 / 碰撞圈的默认比例。只给了碰撞圈时，命中圈按这个比例跟上。</summary>
     public const float HitRadiusScale = 1.2f;
 
-    /// <summary>血条 / 护盾条固定宽度的一半（宽 160）。</summary>
-    private const float BarHalfWidth = 80f;
+    /// <summary>球身的底到整片条区（第一条的上沿）之间的缝。</summary>
+    private const float BarTopGap = 10f;
 
-    /// <summary>球底到血条的间隙、血条高度。</summary>
-    private const float HealthBarGap = 10f;
-    private const float HealthBarHeight = 14f;
-
-    /// <summary>血条下沿到护盾条的间隙、护盾条高度（比血条细）。</summary>
-    private const float ShieldBarGap = 4f;
-    private const float ShieldBarHeight = 8f;
+    /// <summary>球身上的条区节点名，以及血条、护盾条在条区里的节点名。</summary>
+    public const string LayoutPath = "Layout";
+    public const string HealthBarName = "HealthBar";
+    public const string ShieldBarName = "ShieldBar";
 
     private const string BodyShapePath = "Shape";
     private const string HitShapePath = "HitArea/Shape";
@@ -89,55 +86,56 @@ public static class BallLook
     }
 
     /// <summary>
-    /// 摆血条：**大小固定**（所有球都是 160×14），只有位置跟着球走——
-    /// 挂在球底下方 10 像素，所以 100px 和 150px 的球都不会被自己的血条盖住。
+    /// 拿到球身上的**条区**（`BallLayout`）——所有球身上的条都挂在它下面。
+    /// 想往球上挂一条的人（护盾条、咒力条…）都从这里拿，别自己写路径。
     /// </summary>
-    public static void PlaceHealthBar(Ball ball)
+    public static BallLayout Layout(Ball ball) => ball?.GetNodeOrNull<BallLayout>(LayoutPath);
+
+    /// <summary>
+    /// 摆整片条区：按球的碰撞圈半径把条区放到球的正下方（第一条离球底 10 像素，
+    /// 所以 100px 和 150px 的球都不会被自己的条盖住）。
+    ///
+    /// **要在所有组件的 `Bind` 都跑完之后调**：`5001` 那样的组件会改半径，
+    /// 半径没定下来就把条摆好，条就会贴着旧尺寸。条区内部谁先谁后、隔多少、显不显，
+    /// 全归 `BallLayout`，这里只管整片的位置。
+    /// </summary>
+    public static void PlaceLayout(Ball ball)
     {
-        var bar = ball?.GetNodeOrNull<ProgressBar>("HealthBar");
-        if (bar == null)
+        var layout = Layout(ball);
+        if (layout == null)
         {
+            GD.PushError($"[外观] 预制体里找不到条区节点（{LayoutPath}），球身上的条没法摆。");
             return;
         }
 
-        float radius = BodyRadius(ball);
-
-        bar.OffsetLeft = -BarHalfWidth;
-        bar.OffsetRight = BarHalfWidth;
-        bar.OffsetTop = radius + HealthBarGap;
-        bar.OffsetBottom = radius + HealthBarGap + HealthBarHeight;
+        layout.Position = new Vector2(0f, BodyRadius(ball) + BarTopGap);
+        layout.Stack();
     }
 
     /// <summary>
-    /// **开护盾条**：球身上那根显示护盾量的细条，摆在血条正下方。
+    /// **开护盾条**：打开条区里那根显示护盾量的细条。
     /// 只有挂了护盾显示组件（`3003`）的球会调它，所以没护盾的球看不到这根条。
-    /// 位置跟血条一样按球的碰撞圈算，不写死数字。
+    /// 打开之后条区会自己重排（血条下面挨着排），位置不用在这里算。
     /// </summary>
-    public static void PlaceShieldBar(Ball ball)
+    public static void ShowShieldBar(Ball ball)
     {
-        var bar = ball?.GetNodeOrNull<ProgressBar>("ShieldBar");
+        var bar = Layout(ball)?.GetNodeOrNull<ShieldBar>(ShieldBarName);
         if (bar == null)
         {
-            GD.PushError("[外观] 预制体里找不到 ShieldBar 节点，护盾条显示不出来。");
+            GD.PushError($"[外观] 预制体里找不到 {ShieldBarName} 节点，护盾条显示不出来。");
             return;
         }
 
-        float top = BodyRadius(ball) + HealthBarGap + HealthBarHeight + ShieldBarGap;
-
-        bar.OffsetLeft = -BarHalfWidth;
-        bar.OffsetRight = BarHalfWidth;
-        bar.OffsetTop = top;
-        bar.OffsetBottom = top + ShieldBarHeight;
         bar.Visible = true;
     }
 
     /// <summary>把护盾值推给球身上的护盾条；球上没有那根条就什么都不做。</summary>
     public static void SetShield(Ball ball, float current, float max)
     {
-        ball?.GetNodeOrNull<ShieldBar>("ShieldBar")?.SetShield(current, max);
+        Layout(ball)?.GetNodeOrNull<ShieldBar>(ShieldBarName)?.SetShield(current, max);
     }
 
-    /// <summary>球的碰撞圈半径——血条、护盾条都按它往下摆。</summary>
+    /// <summary>球的碰撞圈半径——整片条区（血条、护盾条、咒力条…）都按它往下摆。</summary>
     private static float BodyRadius(Ball ball)
     {
         if (ball?.GetNodeOrNull<CollisionShape2D>(BodyShapePath)?.Shape is CircleShape2D circle)
