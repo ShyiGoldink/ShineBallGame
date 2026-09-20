@@ -25,7 +25,7 @@
   "enemycomponents": {
     "1002": {},
     "6002": {},
-    "8002": { "duration": 100000, "release_when_free": false }
+    "8002": { "duration": 100000, "release_when_free": false, "reverse_suppress": 0 }
   },
   "attacks": {
     "blue_red": { "time": 0.5 },

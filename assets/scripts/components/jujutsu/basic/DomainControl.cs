@@ -36,7 +36,14 @@ public partial class DomainControl : BallComponent
     /// <summary>罩住你的领域消失了，要不要放开。无量空处那种"落地即定胜负"的配 false。</summary>
     public bool ReleaseWhenFree;
 
+    /// <summary>
+    /// 被压住期间，把对方的**反转术式效率**乘成多少：0 = 完全用不出来（无量空处就是这么配的——
+    /// 中了无量空处用不了反转术式），1 = 不影响，负数 = 反转失控（反过来掉血）。
+    /// </summary>
+    public float ReverseSuppress;
+
     private Ball _ball;
+    private CursedEnergy _pool;
     private bool _caught;
 
     /// <summary>控制类别：`stun`（定身）。和减速（`slow`）比，类别优先级更高。见 `BallControl`。</summary>
@@ -50,6 +57,7 @@ public partial class DomainControl : BallComponent
     {
         Duration = JsonTool.GetValue(parameters, "duration", Duration);
         ReleaseWhenFree = JsonTool.GetValue(parameters, "release_when_free", ReleaseWhenFree);
+        ReverseSuppress = JsonTool.GetValue(parameters, "reverse_suppress", ReverseSuppress);
     }
 
     public override void Bind(Ball ball, string configId)
@@ -61,8 +69,12 @@ public partial class DomainControl : BallComponent
             return;
         }
 
+        _pool = FindPool(ball); // 没有咒力池就只是"不压反转术式"，别的照常
+
         GD.Print($"[{Type}] {ball.Name} 会被敌方领域压住（{Duration:0}s"
-            + (ReleaseWhenFree ? "，领域没了就放开）" : "，中了就锁死）"));
+            + (ReleaseWhenFree ? "，领域没了就放开" : "，中了就锁死")
+            + (ReverseSuppress != 1f ? $"，反转术式效率 ×{ReverseSuppress:0.##}" : string.Empty)
+            + "）");
     }
 
     public override void _PhysicsProcess(double delta)
@@ -80,6 +92,7 @@ public partial class DomainControl : BallComponent
             if (_caught && ReleaseWhenFree)
             {
                 _caught = false;
+                _pool?.ReleaseReverse("领域压制解除");
                 _ball.EndControl();
                 GD.Print($"[{Type}] {_ball.Name} 从领域压制里放出来了");
             }
@@ -92,6 +105,7 @@ public partial class DomainControl : BallComponent
         if (!wasCaught)
         {
             GD.Print($"[{Type}] {_ball.Name} 站在敌方领域里、自己又没有领域，被压住了（{Duration:0}s）");
+            _pool?.SuppressReverse(ReverseSuppress, Type);
         }
 
         // 受控状态只在"移动中"才切得进去，所以每帧再试一次：
@@ -119,5 +133,19 @@ public partial class DomainControl : BallComponent
         }
 
         return DomainQuery.CoveringField(_ball) != null;
+    }
+
+    /// <summary>按 `Type` 名在球身上找咒力池（要压反转术式效率就得找它）。</summary>
+    private static CursedEnergy FindPool(Ball ball)
+    {
+        foreach (var child in ball.GetChildren())
+        {
+            if (child is CursedEnergy pool)
+            {
+                return pool;
+            }
+        }
+
+        return null;
     }
 }

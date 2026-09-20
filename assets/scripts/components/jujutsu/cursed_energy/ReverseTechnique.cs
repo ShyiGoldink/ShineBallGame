@@ -19,6 +19,10 @@ using Godot;
 /// 六眼那种 0.01 就是只花百分之一）。这里只报"我这次回了多少血"，乘倍率是池子里的事。
 /// **先付账后回血**：付不起这一帧就不回、并且把术式停掉
 /// （不是"挂着等咒力回来"——那又变成每帧盯账了；重新回血的时机是下一次血量变化）。
+///
+/// **效率会被压住**：咒力池的反转效率带一个压制系数（`CursedEnergy.ReverseScale`），
+/// 无量空处（`8002`）就是把对手乘成 0 的那个——**中了无量空处用不了反转术式**，
+/// 所以这个组件每帧会看一眼效率，掉到 0 或以下就停手（负数也只是停手，不会反过来扣血）。
 /// </summary>
 public partial class ReverseTechnique : BallComponent
 {
@@ -119,6 +123,22 @@ public partial class ReverseTechnique : BallComponent
             return;
         }
 
+        float rate = _pool.ReverseRate;
+
+        // 效率被压到 0 或以下（比如中了无量空处）：这台"回血机器"就停了。
+        // 谁压的谁负责放开（见 `DomainControl.ReleaseWhenFree`），放开之后下一次挨打会把它叫醒。
+        if (rate <= 0f)
+        {
+            Stop(rate < 0f ? "反转术式被压到负数" : "反转术式被压住");
+            return;
+        }
+
+        if (_ball.State == BallState.Dead)
+        {
+            Stop("人没了");
+            return;
+        }
+
         float missing = _ball.MaxHp - _ball.Hp;
         if (missing <= 0f || _ball.State == BallState.Dead)
         {
@@ -127,7 +147,7 @@ public partial class ReverseTechnique : BallComponent
         }
 
         // 这一帧回多少：按每秒量算，但别回过头
-        float heal = Mathf.Min(_pool.ReverseRate * (float)delta, missing);
+        float heal = Mathf.Min(rate * (float)delta, missing);
         if (heal <= 0f)
         {
             return;

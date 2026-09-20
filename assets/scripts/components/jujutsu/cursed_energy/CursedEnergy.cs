@@ -72,6 +72,13 @@ public partial class CursedEnergy : BallComponent
     /// </summary>
     public float BaseReverseRate;
 
+    /// <summary>
+    /// 反转术式效率的**压制系数**：1 = 正常，0 = 完全压住（用不出来），负数 = 反转失控。
+    /// 由"能压住对手术式"的东西来设（无量空处的 `8002 domain.control` 就是把对手压成 0：
+    /// 中了无量空处的人用不了反转术式）。**它不在 Json 里配**——它是对局中的状态，不是角色的属性。
+    /// </summary>
+    public float ReverseScale = 1f;
+
     /// <summary>每层黑闪给某个属性加多少（Json 的 `black_flash` 表：属性名 → 每层值）。</summary>
     private readonly Dictionary<string, float> _blackFlashPerStack = new();
 
@@ -99,8 +106,29 @@ public partial class CursedEnergy : BallComponent
     /// <summary>本局打出的黑闪次数。累加、不清零，「黑闪后状态」就是它大于 0。</summary>
     public int BlackFlashStacks { get; private set; }
 
-    /// <summary>**现在实际**的反转术式效率：基础值 + 黑闪加成。反转术式组件读的就是它。</summary>
-    public float ReverseRate => BaseReverseRate + Bonus(ReverseRateKey);
+    /// <summary>
+    /// **现在实际**的反转术式效率：（基础值 + 黑闪加成）× 压制系数。
+    /// 反转术式组件读的就是它——所以小于等于 0 时那个组件会自动停手。
+    /// </summary>
+    public float ReverseRate => (BaseReverseRate + Bonus(ReverseRateKey)) * ReverseScale;
+
+    /// <summary>
+    /// 把反转术式效率**压住**：`scale` 是乘在新效率上的系数（1 = 放开、0 = 完全用不出来、
+    /// 负数 = 反转失控）。倍率没变就不重复打日志。谁压的谁负责放开（见 `ReleaseReverse`）。
+    /// </summary>
+    public void SuppressReverse(float scale, string why)
+    {
+        if (Mathf.IsEqualApprox(ReverseScale, scale))
+        {
+            return;
+        }
+
+        ReverseScale = scale;
+        GD.Print($"[{TypeName}] {Who} 的反转术式效率被压到 {ReverseRate:0.#}/秒（系数 ×{scale:0.##}，{why}）");
+    }
+
+    /// <summary>把压制放开（系数回 1）。</summary>
+    public void ReleaseReverse(string why) => SuppressReverse(1f, why);
 
     /// <summary>**现在实际**的咒力恢复速度：基础值 + 黑闪加成。</summary>
     public float RegenNow => Regen + Bonus(CursedRegenKey);
