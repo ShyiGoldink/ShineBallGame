@@ -4,9 +4,9 @@
   "type": 1,
   "selfcomponents": {
     "1001": { "speed": 700 },
-    "2004": { "damage": 5000, "damage_burnout": 1000, "black_flash_chance": 0.04, "black_flash_multiplier": 2.5, "sound": "hit" },
+    "2004": { "damage": 500, "damage_burnout": 100, "black_flash_chance": 0.04, "black_flash_multiplier": 2.5, "sound": "hit" },
     "2005": { "cd": 10, "cost": 2000, "move": "blue_red", "skills": { "blue_red": 3, "domain": 1 } },
-    "2006": { "cost": 5000, "damage": 100000, "delay": 0.5, "speed": 2000, "size": 280, "move": "purple" },
+    "2006": { "cost": 5000, "damage": 12000, "delay": 0.5, "speed": 2000, "size": 280, "move": "purple" },
     "3002": { "amount": 6000, "regen": 0 },
     "3003": {},
     "3004": { "regen": 8000, "cost": 1000 },

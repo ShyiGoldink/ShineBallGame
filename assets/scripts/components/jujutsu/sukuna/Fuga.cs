@@ -43,6 +43,12 @@ public partial class Fuga : BallComponent
     /// <summary>放完要不要把刻印清空。默认清（不然只会越攒越大）。</summary>
     public bool Consume = true;
 
+    /// <summary>
+    /// **刻印少于这么多格就不放**（把这一发留着，等斩够了再开）。
+    /// 0 = 不看条件，有几格刻印就按几格打。
+    /// </summary>
+    public int MinStacks = 5;
+
     /// <summary>火焰飞多快（像素/秒）。</summary>
     public float Speed = 1500f;
 
@@ -69,6 +75,7 @@ public partial class Fuga : BallComponent
         MaxDamage = JsonTool.GetValue(parameters, "max_damage", MaxDamage);
         Cost = JsonTool.GetValue(parameters, "cost", Cost);
         Consume = JsonTool.GetValue(parameters, "consume", Consume);
+        MinStacks = JsonTool.GetValue(parameters, "min_stacks", MinStacks);
         Speed = JsonTool.GetValue(parameters, "speed", Speed);
         Life = JsonTool.GetValue(parameters, "life", Life);
         Size = JsonTool.GetValue(parameters, "size", Size);
@@ -111,6 +118,14 @@ public partial class Fuga : BallComponent
         if (target == null)
         {
             GD.Print($"[{Type}] {_ball.Name} 找不到对手，灶開空放");
+            return true;
+        }
+
+        // 刻印太少就先留着：这一发是"攒够了才开"的，不是随时都能点
+        if (_marks.Count < MinStacks)
+        {
+            GD.Print($"[{Type}] {_ball.Name} 只有 {_marks.Count} 格刻印（要 {MinStacks} 格），"
+                + "这一发留着，继续斩");
             return true;
         }
 
