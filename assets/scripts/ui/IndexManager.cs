@@ -117,4 +117,37 @@ public partial class IndexManager : Control
     public void ShowIndex() => Open("Index");
 
     public void ShowSelect() => Open("Select");
+
+    /// <summary>
+    /// 退出游戏。主菜单上那个"退出游戏"按钮、以及主菜单上按 Esc，都走这里。
+    /// （窗口是无边框的、没有关闭按钮，所以游戏里必须自己留一条退出的路。）
+    /// </summary>
+    public void QuitGame()
+    {
+        GD.Print("[菜单] 退出游戏");
+        GetTree().Quit();
+    }
+
+    /// <summary>
+    /// Esc：在子页面（选球）先回主菜单；已经在主菜单了就直接退出游戏。
+    /// 用 _UnhandledInput，所以页面上正常用键盘操作的东西（按钮之类）不受影响。
+    /// </summary>
+    public override void _UnhandledInput(InputEvent @event)
+    {
+        if (@event is not InputEventKey key || !key.Pressed || key.Echo || key.Keycode != Key.Escape)
+        {
+            return;
+        }
+
+        GetViewport().SetInputAsHandled();
+
+        if (CurrentId == "Select")
+        {
+            ShowIndex();
+        }
+        else
+        {
+            QuitGame();
+        }
+    }
 }

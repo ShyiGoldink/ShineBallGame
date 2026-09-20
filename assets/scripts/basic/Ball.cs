@@ -111,6 +111,12 @@ public partial class Ball : CharacterBody2D
 	private float _attackLeft;
 
 	/// <summary>
+	/// 这会儿在演哪一招（空字符串 = 没在攻击）。面板、动画、日志都看它——
+	/// 光靠"状态是攻击"分不出是哪个招式。
+	/// </summary>
+	public string MoveId { get; private set; } = string.Empty;
+
+	/// <summary>
 	/// 让球进入受控状态，持续 duration 秒。
 	/// 已经在受控中时，repeat 决定这段时间怎么处理：重置、叠加、还是不理会。
 	/// 时间走完后自动回到移动状态。
@@ -149,6 +155,20 @@ public partial class Ball : CharacterBody2D
 		ChangeState(BallState.Controlled);
 	}
 
+	/// <summary>
+	/// 提前结束受控：受控 → 移动。
+	/// 谁把人放开的谁负责喊这一句（`8002 domain.control` 配了 `release_when_free` 时就这么用）。
+	/// 不在受控状态里调用等于什么都没做。
+	/// </summary>
+	public void EndControl()
+	{
+		if (_state == BallState.Controlled)
+		{
+			_controlLeft = 0f;
+			ChangeState(BallState.Move);
+		}
+	}
+
 	/// <summary>登场结束：从登场状态切到移动状态，球开始自己跑。</summary>
 	public void FinishSpawn()
 	{
@@ -163,10 +183,13 @@ public partial class Ball : CharacterBody2D
 	/// 攻击状态是给"有动作的攻击"用的：移动类组件在攻击状态里不驱动球（球会停住），
 	/// 动画、前摇、产蛋这些挂在这个状态的开始时刻上。
 	///
-	/// 只有移动中（或者本来就在攻击中，用来刷新时间）能进；
+	/// 只有移动中（或者本来就在攻击中，用来换招/续时间）能进；
 	/// 登场、受控、死亡都不接受——攻击要不要在这些状态下强行插队，等玩法定了再说。
+	///
+	/// 已经在攻击中时，`repeat` 决定这一招跟当前那一招怎么处（覆盖 / 延长 / 打断，见 `AttackRepeat`）；
+	/// 刚进攻击（从移动状态）时它没有区别，三种都是"开始演这一招"。
 	/// </summary>
-	public void BeginAttack(float duration)
+	public void BeginAttack(string moveId, float duration, AttackRepeat repeat = AttackRepeat.Replace)
 	{
 		if (_state == BallState.Dead)
 		{
@@ -178,8 +201,26 @@ public partial class Ball : CharacterBody2D
 			return;
 		}
 
+		// 延长：招式不变，只把时间加上去（动画继续播，不重播）
+		if (_state == BallState.Attack && repeat == AttackRepeat.Extend)
+		{
+			_attackLeft += Mathf.Max(duration, 0f);
+			return;
+		}
+
+		// 覆盖 / 打断：当前这一招到此为止。打断会额外喊一声，
+		// 让那一招有机会收尾（比如取消还没生效的前摇）；覆盖则当作正常换招，不喊。
+		if (_state == BallState.Attack && repeat == AttackRepeat.Interrupt)
+		{
+			Events.Trigger(EventName.attack_interrupted, MoveId);
+		}
+
 		_attackLeft = duration;
+		MoveId = moveId ?? string.Empty;
 		ChangeState(BallState.Attack);
+
+		// 出招的开机通知：外观按招式名切动画（本来就靠这个知道"是哪一招"）
+		Events.Trigger(EventName.attack_started, MoveId);
 	}
 
 	public override void _PhysicsProcess(double delta)
@@ -193,6 +234,14 @@ public partial class Ball : CharacterBody2D
 		if (_state == BallState.Attack)
 		{
 			TickAttack((float)delta);
+			return;
+		}
+
+		// 移动：把"这一帧谁来驱动我"交给移动链（谁先处理谁说话，返回 false 就阻塞后面的）。
+		// 只在移动状态发，所以登场/受控/攻击/死亡时谁都叫不起来。
+		if (_state == BallState.Move)
+		{
+			Events.Trigger(EventName.move_step, (float)delta);
 		}
 	}
 
@@ -237,6 +286,12 @@ public partial class Ball : CharacterBody2D
 		}
 
 		_state = next;
+
+		// 离开攻击状态就把招式名清掉
+		if (next != BallState.Attack)
+		{
+			MoveId = string.Empty;
+		}
 
 		// 死了就没有速度可言：面板显示、物理状态都干净
 		if (next == BallState.Dead)

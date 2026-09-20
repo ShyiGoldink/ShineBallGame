@@ -1,5 +1,5 @@
 {
-  "name": "ball",
+  "name": "普通球",
   "hp": 1200,
   "type": 1,
   "selfcomponents": {

@@ -27,6 +27,12 @@ public partial class EggAttack : BallComponent
     /// <summary>蛋上挂哪个组件（组件编号）。</summary>
     public int EggId;
 
+    /// <summary>
+    /// 这一招在球的招式表（`MoveTable`）里叫什么。配了就用表里的时长和动画，
+    /// 没配（或表里没这一项）就退回下面那几个参数——老写法照样能用。
+    /// </summary>
+    public string Move = string.Empty;
+
     private Ball _ball;
     private float _cdLeft;
     private float _windupLeft;
@@ -38,6 +44,7 @@ public partial class EggAttack : BallComponent
         Windup = JsonTool.GetValue(parameters, "windup", Windup);
         AttackTime = JsonTool.GetValue(parameters, "attack_time", AttackTime);
         EggId = JsonTool.GetValue(parameters, "egg_id", EggId);
+        Move = JsonTool.GetValue(parameters, "move", Move);
     }
 
     /// <summary>装配时接线：拿到球、把 CD 设成满的、订"状态变化"（用来知道这次攻击有没有被打断）。</summary>
@@ -111,8 +118,15 @@ public partial class EggAttack : BallComponent
         _windupLeft = Windup;
         _laying = true;
 
-        // 攻击状态至少要持续到前摇结束，否则前摇还没走完球就回移动状态了，蛋永远产不出来
-        _ball.BeginAttack(Mathf.Max(AttackTime, Windup));
+        // 这一招演多久：招式表里配了就用表的（那才是"这一招"的长度），没配就退回自己的参数。
+        // 无论哪种都不能比前摇短，否则前摇还没走完球就回移动状态了，蛋永远产不出来。
+        float duration = Mathf.Max(AttackTime, Windup);
+        if (MoveTable.TryGet(_ball.Id, Move, out float tableTime, out _) && tableTime > 0f)
+        {
+            duration = Mathf.Max(tableTime, Windup);
+        }
+
+        _ball.BeginAttack(Move, duration, AttackRepeat.Replace);
     }
 
     /// <summary>产蛋：在这个位置放一颗只挂了 EggId 组件的新球，阵营跟自己一样。</summary>

@@ -11,6 +11,7 @@ public partial class Game : Node
 
 	private Label _countdown;
 	private Label _result;
+	private PauseMenu _pauseMenu;
 	private float _timeLeft = CountdownSeconds;
 	private bool _counting;
 	private bool _settled;
@@ -25,6 +26,7 @@ public partial class Game : Node
 	{
 		_countdown = GetNodeOrNull<Label>("Countdown");
 		_result = GetNodeOrNull<Label>("Result");
+		_pauseMenu = GetNodeOrNull<PauseMenu>("PauseMenu");
 
 		var manager = GameManager.Instance;
 		if (manager == null || !manager.CanStart)
@@ -102,6 +104,27 @@ public partial class Game : Node
 		}
 	}
 
+	/// <summary>
+	/// 对局中按 Esc = 暂停。这里只管"开"——开完树就冻住了，这个函数不会再被调用，
+	/// "关"由暂停面板自己收 Esc 去做（它 `ProcessMode = Always`）。
+	/// 结算之后不接管：那时候提示已经占着"按任意处退出"这条输入了。
+	/// </summary>
+	public override void _UnhandledInput(InputEvent @event)
+	{
+		if (_pauseMenu == null || _pauseMenu.Visible || _settled || !_matchReady)
+		{
+			return;
+		}
+
+		if (@event is not InputEventKey key || !key.Pressed || key.Echo || key.Keycode != Key.Escape)
+		{
+			return;
+		}
+
+		GetViewport().SetInputAsHandled();
+		_pauseMenu.Pause();
+	}
+
 	private void UpdateCountdown(double delta)
 	{
 		_timeLeft -= (float)delta;
@@ -172,7 +195,10 @@ public partial class Game : Node
 		GetNodeOrNull<ResultPrompt>("Prompt")?.ShowPrompt();
 	}
 
-    /// <summary>把场上剩下的蛋清掉（蛋不是球、不在 balls 组里，所以单独清）。</summary>
+    /// <summary>
+    /// 把场上剩下的蛋和苍/赫 清掉（它们都不是球、不在 balls 组里，所以单独清）。
+    /// 它们的计时都跑在 `_PhysicsProcess` 里，暂停之后就不会再走，留着会一直挂在结算画面上。
+    /// </summary>
     private void ClearEggs()
     {
         int count = 0;
@@ -183,9 +209,21 @@ public partial class Game : Node
             count++;
         }
 
+        foreach (var node in GetTree().GetNodesInGroup(JujutsuOrb.OrbsGroup))
+        {
+            node.QueueFree();
+            count++;
+        }
+
+        foreach (var node in GetTree().GetNodesInGroup(Purple.PurplesGroup))
+        {
+            node.QueueFree();
+            count++;
+        }
+
         if (count > 0)
         {
-            GD.Print($"[对战] 清掉场上剩下的 {count} 颗蛋");
+            GD.Print($"[对战] 清掉场上剩下的 {count} 个蛋/苍赫/茈");
         }
     }
 

@@ -78,6 +78,9 @@ public partial class CursedEnergy : BallComponent
     private Ball _ball;
     private CursedEnergyState _state = CursedEnergyState.Normal;
 
+    /// <summary>熔断还剩多久（秒）。熔断是**有时长的**：领域收场时开一段，走完自己回到「正常」。</summary>
+    private float _burnoutLeft;
+
     /// <summary>这一轮干涸报过警了没有（见 `TrySpend` 里那句日志的说明）。</summary>
     private bool _warnedEmpty;
 
@@ -169,9 +172,21 @@ public partial class CursedEnergy : BallComponent
         }
     }
 
-    /// <summary>被动恢复：每秒回 `Regen`，回到上限为止。</summary>
+    /// <summary>被动恢复：每秒回 `Regen`，回到上限为止；顺便把熔断的计时走完。</summary>
     public override void _PhysicsProcess(double delta)
     {
+        // 熔断计时：走完就回到「正常」。这一段**必须放在最前面**——
+        // 下面那句"咒力满了直接返回"会在满咒力时把整个函数提前结束。
+        if (_burnoutLeft > 0f)
+        {
+            _burnoutLeft -= (float)delta;
+            if (_burnoutLeft <= 0f)
+            {
+                _burnoutLeft = 0f;
+                State = CursedEnergyState.Normal;
+            }
+        }
+
         float regen = RegenNow; // 基础值 + 黑闪加成
         if (regen <= 0f || _current >= Amount)
         {
@@ -222,6 +237,19 @@ public partial class CursedEnergy : BallComponent
         }
 
         _current = Mathf.Min(Amount, _current + amount);
+    }
+
+    /// <summary>
+    /// 进入**术式熔断**，持续 `seconds` 秒，走完自己回到「正常」。
+    ///
+    /// 谁开的谁负责喊这一声：领域收场（`Domain`）就是这么用的——时间到、被打碎、被更强的领域覆盖，
+    /// 三种收场都要熔断一段。熔断期间：出招（`2005`）停手、无下限（`3004`）不灌盾、
+    /// 平A（`2004`）掉到熔断那一档。**它不拦反转术式**——那个熔断期间照样能用。
+    /// </summary>
+    public void EnterBurnout(float seconds)
+    {
+        _burnoutLeft = Mathf.Max(seconds, 0f);
+        State = CursedEnergyState.Burnout;
     }
 
     /// <summary>

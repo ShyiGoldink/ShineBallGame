@@ -69,9 +69,25 @@ public static class SpineLook
             {
                 if (arg is BallState state)
                 {
-                    Play(ball, sprite, data, state);
+                    // 攻击状态不在这儿切：那一招的动画由下面的 attack_started 指定。
+                    // 不然进攻击时会先按状态播一下、再被招式动画盖掉，白播一帧。
+                    if (state != BallState.Attack)
+                    {
+                        Play(ball, sprite, data, state);
+                    }
                 }
 
+                return true;
+            },
+        });
+
+        // 出招（含换招）：动画名先看招式表里给这一招配的那一段，没有才退回按状态找
+        ball.Events.Register(EventName.attack_started, new EventResponseFunction
+        {
+            priority = 0,
+            action = arg =>
+            {
+                Play(ball, sprite, data, BallState.Attack, arg as string);
                 return true;
             },
         });
@@ -80,8 +96,11 @@ public static class SpineLook
         return true;
     }
 
-    /// <summary>按状态切动画：先把轨道清掉再放，免得排成一队。</summary>
-    private static void Play(Ball ball, GodotObject sprite, GodotObject data, BallState state)
+    /// <summary>
+    /// 切动画：先把轨道清掉再放，免得排成一队。
+    /// `moveId` 是"这一下演的是哪一招"（为空就是普通的状态切换）。
+    /// </summary>
+    private static void Play(Ball ball, GodotObject sprite, GodotObject data, BallState state, string moveId = null)
     {
         var animationState = sprite.Call("get_animation_state").AsGodotObject();
         if (animationState == null)
@@ -89,7 +108,7 @@ public static class SpineLook
             return; // 还没准备好，等下一次状态变化
         }
 
-        var clip = Pick(data, state);
+        var clip = Pick(ball, data, state, moveId);
         if (clip == null)
         {
             return; // 一个都没找到，就保持现在的姿势
@@ -98,12 +117,23 @@ public static class SpineLook
         animationState.Call("clear_track", 0);
         animationState.Call("add_animation", clip, 0f, IsLooping(state), 0);
 
-        GD.Print($"[Spine] {ball.Name} 播 {clip}（{state}）");
+        GD.Print($"[Spine] {ball.Name} 播 {clip}（{state}{(string.IsNullOrEmpty(moveId) ? "" : " / " + moveId)}）");
     }
 
-    /// <summary>挑这个状态该播哪个动画：先按名字找，找不到顺兜底链往下找。</summary>
-    private static string Pick(GodotObject data, BallState state)
+    /// <summary>
+    /// 挑这一段该播哪个动画：**先看招式表里给这一招配的动画名**，
+    /// 没配（或那段动画不存在）再按状态顺兜底链往下找。
+    /// </summary>
+    private static string Pick(Ball ball, GodotObject data, BallState state, string moveId = null)
     {
+        if (!string.IsNullOrEmpty(moveId)
+            && MoveTable.TryGet(ball.Id, moveId, out _, out var moveAnim)
+            && !string.IsNullOrEmpty(moveAnim)
+            && HasAnimation(data, moveAnim))
+        {
+            return moveAnim;
+        }
+
         int index = (int)state;
         if (data == null || index < 0 || index >= Clips.Length)
         {
@@ -112,9 +142,7 @@ public static class SpineLook
 
         foreach (var candidate in Clips[index])
         {
-            // 注意：找不到动画时返回的是"空对象"，VariantType 是 Object 不是 Nil，
-            // 所以必须看 AsGodotObject() 是不是 null。
-            if (data.Call("find_animation", candidate).AsGodotObject() != null)
+            if (HasAnimation(data, candidate))
             {
                 return candidate;
             }
@@ -122,6 +150,14 @@ public static class SpineLook
 
         return null;
     }
+
+    /// <summary>
+    /// 骨架里有没有这段动画。
+    /// 注意：找不到时返回的是"空对象"，VariantType 是 Object 不是 Nil，
+    /// 所以必须看 `AsGodotObject()` 是不是 null。
+    /// </summary>
+    private static bool HasAnimation(GodotObject data, string name) =>
+        data != null && data.Call("find_animation", name).AsGodotObject() != null;
 
     /// <summary>登场 / 移动 / 受控循环；攻击、死亡只播一遍（死亡停在最后一帧）。</summary>
     private static bool IsLooping(BallState state) =>

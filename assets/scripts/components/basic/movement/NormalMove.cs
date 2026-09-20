@@ -3,6 +3,10 @@ using Godot;
 /// <summary>
 /// 普通移动：给一个初速度和一个初始方向，之后一直匀速直线前进，
 /// 撞到东西就按反射（相对碰撞法线对称）弹开，速度大小不变。
+///
+/// 它**不自己跑 `_PhysicsProcess`**，而是挂在"移动链"上（见 `MovePriority`）、优先级最低：
+/// 球每帧在移动状态发一次 `move_step`，苍/赫 那种要接管的东西排在它前面，
+/// 人家处理完返回 false 就把它挡掉了——这就是"被阻塞"，它自己不用知道有谁在场。
 /// </summary>
 public partial class NormalMove : BallComponent
 {
@@ -23,7 +27,6 @@ public partial class NormalMove : BallComponent
 
     private Ball _ball;
     private bool _started;
-    private bool _moving;
 
     public override void ApplyParams(Godot.Collections.Dictionary parameters)
     {
@@ -31,8 +34,8 @@ public partial class NormalMove : BallComponent
     }
 
     /// <summary>
-    /// 装配时接线：拿到球、订"状态变化"、按当前状态对一次表。
-    /// （球挂上组件之前可能已经切过状态了，那次通知注册事件是收不到的。）
+    /// 装配时接线：把自己挂到移动链的最后（优先级最低）。
+    /// "只在移动状态动"不用自己判断了——移动链只在移动状态发。
     /// </summary>
     public override void Bind(Ball ball, string configId)
     {
@@ -43,24 +46,19 @@ public partial class NormalMove : BallComponent
             return;
         }
 
-        // 状态一变球就通知我：只在移动状态里动，其它状态（登场、受控、攻击、死亡）都停住。
-        // 优先级这里填 0 就行，状态事件没有先后之争；返回 true 是为了不挡住别的组件收听。
-        _ball.Events.Register(EventName.state_changed, new EventResponseFunction { priority = 0, action = OnStateChanged });
-
-        _moving = _ball.State == BallState.Move;
-    }
-
-    private bool OnStateChanged(object arg)
-    {
-        _moving = arg is BallState state && state == BallState.Move;
-        return true;
-    }
-
-    public override void _PhysicsProcess(double delta)
-    {
-        if (_ball == null || !_moving)
+        _ball.Events.Register(EventName.move_step, new EventResponseFunction
         {
-            return;
+            priority = MovePriority.Normal,
+            action = OnMoveStep,
+        });
+    }
+
+    /// <summary>移动链轮到我了：推一步。返回 false —— 它是链条的收尾，处理完就截断。</summary>
+    private bool OnMoveStep(object arg)
+    {
+        if (_ball == null || arg is not float delta)
+        {
+            return true;
         }
 
         // 第一帧才把初速度写进去：工厂可能是先挂组件、后填参数，
@@ -72,7 +70,8 @@ public partial class NormalMove : BallComponent
         }
 
         // 推进 + 反弹：跟受控状态下的控制类组件共用一套（BallMovement）
-        BallMovement.Drive(_ball, (float)delta);
+        BallMovement.Drive(_ball, delta);
+        return false;
     }
 
     /// <summary>Json 里写了方向就用写的，没写就随机给一个斜方向（两个分量都不会太小）。</summary>

@@ -17,6 +17,12 @@ public sealed class BallData
     /// <summary>挂到对面身上的组件。</summary>
     public Godot.Collections.Dictionary EnemyComponents = new();
 
+    /// <summary>
+    /// 招式表：招式名 → `{ "time": 演多久, "anim": 配哪段动画 }`（可以没有，可以只写一部分）。
+    /// 读法是 `MoveTable`，写法在 `FunctionGuide` 的招式那一节。
+    /// </summary>
+    public Godot.Collections.Dictionary Attacks = new();
+
     public static BallData Load(string ballId)
     {
         if (string.IsNullOrEmpty(ballId))
@@ -41,6 +47,7 @@ public sealed class BallData
             SpineScale = JsonTool.Get(file, "type", 1) == 2 ? JsonTool.Get(file, "spine_scale", 1f) : 1f,
             SelfComponents = JsonTool.Get(file, "selfcomponents", new Godot.Collections.Dictionary()),
             EnemyComponents = JsonTool.Get(file, "enemycomponents", new Godot.Collections.Dictionary()),
+            Attacks = JsonTool.Get(file, "attacks", new Godot.Collections.Dictionary()),
         };
     }
 }

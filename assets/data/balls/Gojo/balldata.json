@@ -5,6 +5,8 @@
   "selfcomponents": {
     "1001": { "speed": 700 },
     "2004": { "damage": 500, "damage_burnout": 100, "black_flash_chance": 0.04, "black_flash_multiplier": 2.5, "sound": "hit" },
+    "2005": { "cd": 10, "move": "blue_red", "skills": { "blue_red": 3, "domain": 1 } },
+    "2006": { "cost": 500, "damage": 10000, "delay": 0.5, "speed": 2000, "size": 280, "move": "purple" },
     "3002": { "amount": 600, "regen": 0 },
     "3003": {},
     "3004": { "regen": 800, "cost": 100 },
@@ -17,7 +19,17 @@
       "reverse_rate": 100,
       "black_flash": { "reverse_rate": 50 }
     },
-    "7002": {}
+    "7002": {},
+    "8001": { "radius": 380, "priority": 20, "duration": 99, "cost": 600, "burnout_time": 20 }
   },
-  "enemycomponents": {}
+  "enemycomponents": {
+    "1002": {},
+    "6002": {},
+    "8002": { "duration": 100000, "release_when_free": false }
+  },
+  "attacks": {
+    "blue_red": { "time": 0.5 },
+    "purple": { "time": 0.8 },
+    "domain": { "time": 1.2 }
+  }
 }

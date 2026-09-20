@@ -1,9 +1,10 @@
-[gd_scene load_steps=5 format=3 uid="uid://ckfjux3rmndp3"]
+[gd_scene load_steps=6 format=3 uid="uid://ckfjux3rmndp3"]
 
 [ext_resource type="Script" path="res://assets/scripts/basic/Game.cs" id="1_game"]
 [ext_resource type="PackedScene" path="res://assets/scene/BallDataPanel.tscn" id="2_panel"]
 [ext_resource type="Theme" path="res://assets/theme/ui_theme.tres" id="3_theme"]
 [ext_resource type="Script" path="res://assets/scripts/ui/ResultPrompt.cs" id="4_prompt"]
+[ext_resource type="Script" path="res://assets/scripts/ui/PauseMenu.cs" id="5_pause"]
 
 [node name="Game" type="Node"]
 script = ExtResource("1_game")
@@ -62,3 +63,61 @@ offset_left = 1500.0
 offset_top = 300.0
 offset_right = 1860.0
 offset_bottom = 780.0
+
+[node name="PauseMenu" type="Control" parent="."]
+z_index = 20
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("3_theme")
+script = ExtResource("5_pause")
+
+[node name="Background" type="ColorRect" parent="PauseMenu"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.04, 0.04, 0.06, 0.72)
+
+[node name="Box" type="VBoxContainer" parent="PauseMenu"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -280.0
+offset_top = -220.0
+offset_right = 280.0
+offset_bottom = 220.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 36
+
+[node name="Title" type="Label" parent="PauseMenu/Box"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 96
+text = "暂停"
+horizontal_alignment = 1
+
+[node name="Resume" type="Button" parent="PauseMenu/Box"]
+layout_mode = 2
+text = "继续"
+
+[node name="ToMenu" type="Button" parent="PauseMenu/Box"]
+layout_mode = 2
+text = "返回主菜单"
+
+[node name="Quit" type="Button" parent="PauseMenu/Box"]
+layout_mode = 2
+text = "退出游戏"
+
+[connection signal="pressed" from="PauseMenu/Box/Resume" to="PauseMenu" method="OnResumePressed"]
+[connection signal="pressed" from="PauseMenu/Box/ToMenu" to="PauseMenu" method="OnMenuPressed"]
+[connection signal="pressed" from="PauseMenu/Box/Quit" to="PauseMenu" method="OnQuitPressed"]
