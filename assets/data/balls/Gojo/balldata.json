@@ -1,26 +1,26 @@
 {
   "name": "五条悟",
-  "hp": 1200,
+  "hp": 12000,
   "type": 1,
   "selfcomponents": {
     "1001": { "speed": 700 },
-    "2004": { "damage": 500, "damage_burnout": 100, "black_flash_chance": 0.04, "black_flash_multiplier": 2.5, "sound": "hit" },
-    "2005": { "cd": 10, "move": "blue_red", "skills": { "blue_red": 3, "domain": 1 } },
-    "2006": { "cost": 500, "damage": 10000, "delay": 0.5, "speed": 2000, "size": 280, "move": "purple" },
-    "3002": { "amount": 600, "regen": 0 },
+    "2004": { "damage": 5000, "damage_burnout": 1000, "black_flash_chance": 0.04, "black_flash_multiplier": 2.5, "sound": "hit" },
+    "2005": { "cd": 10, "cost": 2000, "move": "blue_red", "skills": { "blue_red": 3, "domain": 1 } },
+    "2006": { "cost": 5000, "damage": 100000, "delay": 0.5, "speed": 2000, "size": 280, "move": "purple" },
+    "3002": { "amount": 6000, "regen": 0 },
     "3003": {},
-    "3004": { "regen": 800, "cost": 100 },
+    "3004": { "regen": 8000, "cost": 1000 },
     "4001": {},
     "4005": {},
     "7001": {
-      "amount": 1000,
-      "regen": 20,
+      "amount": 10000,
+      "regen": 200,
       "cost_rate": 0.01,
-      "reverse_rate": 100,
-      "black_flash": { "reverse_rate": 50 }
+      "reverse_rate": 1000,
+      "black_flash": { "reverse_rate": 500 }
     },
     "7002": {},
-    "8001": { "radius": 380, "priority": 20, "duration": 99, "cost": 600, "burnout_time": 20 }
+    "8001": { "radius": 380, "priority": 20, "duration": 99, "cost": 6000, "burnout_time": 20 }
   },
   "enemycomponents": {
     "1002": {},

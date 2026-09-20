@@ -9,18 +9,19 @@
 > 见下方自查第 1、2、3 条——现在"加组件"不用动装配器、"加外观"只有一处入口、
 > 事件一律组件自己注册。剩下的都是具体坑。
 >
-> 这一版（2026-09-20）新增的是**咒力那一层和领域**：`7001` 咒力池（状态 / 熔断 / 黑闪层数）
-> + 五条悟的苍赫与虚式茈 + **领域基类 `Domain` 与无量空处**。领域那一套的拆法和取舍看自查第 15 条，
-> 跑测试踩的坑看第 16 条。
+> 这一版（2026-09-20）新增的是**咒力那一层、领域、以及宿儺那一套**：`7001` 咒力池（状态 / 熔断 /
+> 黑闪层数）+ 五条悟的苍赫与虚式茈 + **领域基类 `Domain`、无量空处、伏魔御厨子** +
+> 宿儺的解/捌/灶開（斩击刻印那套）。领域的拆法与取舍看自查第 15 条，宿儺那套和飞行物看第 16 条，
+> 跑测试踩的坑看第 17 条。
 
 ## 一、现在是什么
 
 | 项 | 数 |
 | --- | --- |
-| C# 文件 | 79 个，约 7260 行 |
-| 场景 | 9 个（`index` / `game` / `NormalBall` / `BallPicker` / `BallButton` / `BallDataPanel` / `arenas/basic` / `orbs/Orb` / `projectiles/Purple`） |
-| 球 | 5 颗（`NormalBall` 贴图球、`pulipuli` Spine 球、`ShieldBall` 盾球、`Gojo` 五条悟、`Sandbag` 沙包） |
-| 组件 | 25 个：移动 2 / 攻击 5 / 防御 4 / 行为 7 / 形态 1 / 控制 2 / 咒力 2 / 领域 2（见 `FunctionGuide` 的组件总表） |
+| C# 文件 | 91 个，约 8400 行 |
+| 场景 | 11 个（`index` / `game` / `NormalBall` / `BallPicker` / `BallButton` / `BallDataPanel` / `arenas/basic` / `orbs/Orb` / `projectiles` 下的 `Purple`·`Slash`·`FireArrow`） |
+| 球 | 6 颗（`NormalBall` 贴图球、`pulipuli` Spine 球、`ShieldBall` 盾球、`Gojo` 五条悟、`Sukuna` 20指·虎杖身·宿儺、`Sandbag` 沙包） |
+| 组件 | 32 个：移动 2 / 攻击 9 / 防御 4 / 行为 8 / 形态 1 / 控制 2 / 咒力 3 / 领域 4（见 `FunctionGuide` 的组件总表） |
 | 蛋 | 1 种（`2003` 屎蛋，是 `Egg` 的子类，不是组件） |
 | 外部依赖 | Godot 4.7.1（带 C# 的自编译版）+ Spine GDExtension（`addons/spine-godot`） |
 
@@ -51,8 +52,10 @@
 | `assets/scripts/components/jujutsu/cursed_energy/` | 咒力底层（咒力池、咒力条、反转术式） | 由装配器按 Json 编号创建 |
 | `assets/scripts/components/jujutsu/basic/` | 咒术的通用机制：领域基类 `Domain`、领域效果 `DomainControl` | 同上 |
 | `assets/scripts/components/jujutsu/gojo/` | 五条悟专属（苍/赫牵引、术式出招、虚式茈、无下限、无量空处） | 同上 |
+| `assets/scripts/components/jujutsu/sukuna/` | 宿儺专属（斩击刻印、解/捌、灶開、伏魔御厨子、必中斩） | 同上 |
 | `assets/scripts/domains/` | 领域在场上长什么样：`DomainField`（圈 + 环 + 进出判定）+ 各领域的配色子类 | `Domain.Expand` 造出来、挂在施术者身下 |
-| `assets/scripts/orbs/` `assets/scripts/projectiles/` | 场上别的"不是球"的东西：苍/赫球、茈球 | `2005` / `2006` 放出去 |
+| `assets/scripts/orbs/` | 苍/赫球（`JujutsuOrb` 的子类） | `2005` 放出去 |
+| `assets/scripts/projectiles/` | **飞行物**：基类 `DamageProjectile` + 三个子类（茈 `Purple`、斩击 `SlashProjectile`、火焰 `FireArrow`） | `2006` / `2007` / `2008` / `2009` 放出去 |
 | `assets/scripts/components/basic/ComponentLibrary.cs` | 编号 → 组件实例的翻译表 | `BallAssembler` |
 | `assets/scripts/tool/BallData.cs` | `balldata.json` 的内存模型 | 装配器、`Game` |
 | `assets/scripts/tool/BallLibrary.cs` | 扫 `user://balls` 列出所有球、读图；`Find` 是**小球独特资源的统一找法** | `SelectPage`、`Egg`、`SoundTool`、`BallLook` |
@@ -141,6 +144,10 @@ basic(Ball) ──→ 只认识 BallEvent/BallState，不认识任何具体组�
 | 移动链 | ✅ 实机通过 | 球每帧发 `move_step`，`1002` 苍/赫牵引（优先级 100）会整段接管、否则 `1001` 普通移动（0）；**同一帧只有一个驱动者** |
 | 领域（`8001` 无量空处 + 基类 `Domain`） | ✅ 实机 + 截图验过 | 开法两条（出招随机 / 对手开就跟）、外壳记"打进来的伤害"（半血碎）、优先级压范围（差 10 覆盖）、收场熔断；场跟着球走、2px 环是画的、进出用圆心距离 |
 | 领域的效果 | ✅ 实机通过 | `8002` 判定"站在敌方领域里且自己没有领域"→ 定身（`duration` 默认 100000s = 这一局废了）；`6002` 负责"不能还手" |
+| 领域对撞（必中互相抵消） | ✅ 实机通过 | 必中先打在保护持有者的那个领域上（`Domain.Absorb`）：非开放型拿外壳挡（6000 壳 ÷ 1200/秒 = 5 下碎）、开放型不吃伤害但照样抵消；**前摇中**也算"我在用领域顶"，所以两边同时开不会拼手速；差 10 以上弱的那方当场被覆盖，之后必中直接打人 |
+| 宿儺套件 | ✅ 实机通过 | `7003` 斩击刻印（解/捌每刀 +1；领域必中斩也 +1）→ `2009` 灶開（`2000 + 800×刻印`，实测 14 格 → 13200）+ `2007` 解（固定伤害、一次两刀）+ `2008` 捌（`500 + 对手最大血量 8%`）+ `8003` 开放型领域 |
+| 飞行物（茈/斩击/火焰） | ✅ 实机通过 | 抽了基类 `DamageProjectile`：飞行、判定、留场、阵营、"撞自己人不算"都在基类，子类只管长相和命中之后多做的那一下；**打提前量**（`LeadDirection`）之后斩击从"基本全空"变成 19/19 全中 |
+| 真伤（`4008`） | ✅ 实机通过 | 认 `source_prefix`（宿儺配 `domain.`）：领域里的必中斩绕过护盾直接进血——不然五条的护盾 + 无下限（8000/秒）会把领域那 1200/秒全吃掉，领域成摆设 |
 | 毒无视护盾（`4004`） | ✅ 实机通过 | 攻击方写在自己的 `enemycomponents` 里；实测盾球挨它时护盾吸收 0、毒伤全进血 |
 | 伤害载荷 | ✅ `DamageEvent` | 带来源、可被中途改写（`Amount`）；扣血统一在 `4001` 并打 `[伤害]` 日志（例外：`4004` 毒血自己扣，为了让毒绕过护盾） |
 | 场地（`user://scenes` + `assets/scene/arenas/<id>.tscn`） | ✅ 实机通过 | 数据只管出生范围，墙和边框按 id 找同名预制体 |
@@ -300,7 +307,29 @@ basic(Ball) ──→ 只认识 BallEvent/BallState，不认识任何具体组�
   ② `8002` 的 `release_when_free` 现在没有反例用（无量空处配的是锁死），这条分支只在代码里；
   ③ 开放型领域（`open: true`）还没人用，只按"打不碎、不参与优先级比较、只按时间到期"实现着。
 
-### 16. 跑测试的姿势（本轮的踩坑）
+### 16. 宿儺那一套：先抽公共层，再写角色（✅ 本轮新做的，实机跑过）
+
+* **先抽的两层**：
+  ① `DamageProjectile`（`assets/scripts/projectiles/`）——茈、斩击、火焰共用一个基类，
+  子类只覆盖"画成什么样"（`DrawShape`）和"命中之后多做一件什么"（`OnHitBall`）；
+  ② `DomainQuery`（`jujutsu/basic/`）——"我站在谁的领域里、我自己有没有在顶"只有一份实现，
+  `8002`（定身）和 `8004`（必中斩）都用它。
+  ③ 顺带把 `2005` 出招器从 `gojo/` 挪到了 `jujutsu/basic/`：它本来就是通用的，
+  宿儺的 `skills` 表里写四个招式名就能用，一行代码没改。
+* **宿儺自己的东西都在 `components/jujutsu/sukuna/`**：`7003` 刻印池、`2007` 解、`2008` 捌、
+  `2009` 灶開、`8003` 领域本体、`8004` 领域必中斩。角色专属的资源池放角色目录（不挤 7xxx 的通用位置）。
+* **领域"必中先打领域"落到代码上是 `Domain.Absorb`**：非开放型记到外壳上、开放型直接抵消。
+  细节见 `FunctionGuide` 的约定 20。
+* **踩到并修掉的两个**：
+  ① **手速问题**：两边开领域有零点几秒的前摇差，先展开的一方会在对方前摇里把对面锁死——
+  于是"两个领域同时开互相抵消"退化成拼手速。修法是 `Domain.Pending` + `DomainQuery.Contesting`：
+  **前摇中也算"我在用领域顶"**。
+  ② **飞行物全空**：直着飞过去打移动中的球基本打不中（实测宿儺的斩击几乎全空），
+  加了 `LeadDirection`（朝对手将要去的地方打）之后 19/19 全中。
+* **还没做的**：宿儺没有防御层（五条三下平A 就把他放倒），这一边的数值还欠一轮；
+  `2005` 的"这一招现在能不能用"也还没有（领域开着时再抽到 `domain` 是空放）。
+
+### 17. 跑测试的姿势（本轮的踩坑）
 
 * **`.tmp/` 里的 `.cs` 不会进编译**（`.NET SDK` 的默认 glob 不扫隐藏目录），
   所以临时开局的脚本要用 **GDScript** 写：`.tmp/domain_test.gd` 里 `GameManager.call("StartGame", "Gojo", "Sandbag")`，
@@ -319,6 +348,8 @@ basic(Ball) ──→ 只认识 BallEvent/BallState，不认识任何具体组�
 | 加一个组件 | `components/` 下写类（**文件名 = 类名**）→ 有前置组件就在 `Requirements` 里写它的 `Type` 名 → 接线写在 `Bind` 里（注册事件、连信号、改形状）→ `ComponentLibrary` 加一行。**装配器不用动** |
 | 加一种蛋 | `eggs/` 下写 `Egg` 的子类（覆盖 `OnHit`）→ `EggLibrary` 加一行 → 球的 `2002.egg_id` 填编号 |
 | 加一种领域 | `components/jujutsu/<角色>/` 下写 `Domain` 的子类（填默认值、换外观）→ `ComponentLibrary` 加一行 → 球的 `selfcomponents` 写编号 + `attacks` 配招式名 + `2005.skills` 给权重；"对别人干什么"另外写/复用一个送进 `enemycomponents` 的组件（如 `8002`） |
+| 加一种飞行物 | `projectiles/` 下写 `DamageProjectile` 的子类（覆盖 `DrawShape` / `OnHitBall`）→ `assets/scene/projectiles/` 配一个只挂脚本的 `.tscn` → 放它的组件里 `Instantiate` + `Launch`（要打移动目标就先用 `LeadDirection` 算方向、用 `Numbered` 起名） |
+| 加一个咒术角色 | `components/jujutsu/<角色>/` 放他专属的组件 → `assets/data/balls/<id>/` 写数据（血量按「基准 10000、顶级 12000」）→ 放张占位头像 → 跑一次让补数据复制过去 |
 | 编译 | `NUGET_PACKAGES=C:\Users\24807\.nuget\packages` 后 `dotnet build ShineBallGame.csproj`（编辑器的构建按钮不可用） |
 | 打包成 exe | `godot.windows.editor.x86_64.mono.console.exe --headless --path D:\shine-ball-game --export-release "Windows Desktop" build/ShineBallGame.exe`，产物在 `build/`（前提见下面两条） |
 | 跑一局看日志 | `godot.windows.editor.x86_64.mono.console.exe --headless --path D:\shine-ball-game res://assets/scene/index.tscn --fixed-fps 60 --quit-after N`（`--fixed-fps` 必须加，否则倒计时/周期逻辑推不动） |
@@ -339,8 +370,11 @@ basic(Ball) ──→ 只认识 BallEvent/BallState，不认识任何具体组�
 5. ~~**场景选择界面**~~ —— ✅ 已做（`ScenePicker` + `user://scenes`，见自查第 11 条）。
 6. ~~**领域**~~ —— ✅ 已做（基类 `Domain` + 无量空处 `8001` + 效果 `8002`/`6002`，见自查第 15 条）。
 7. ~~**咒力那一层**~~ —— ✅ 已做（`7001`/`7002` + 无下限 `3004` + 反转术式 `4005` + 黑闪与熔断）。
-8. **宿傩那类"靠回血扛得住"的领域**——`open: true`（没有外壳、打不碎）的分支已经实现但没人用：
-   要的是"圈里持续掉血、回血跟得上就扛得住"，也就是再写一个 `Domain` 子类 + 一个送对面的伤害组件。
-9. **蛋的到期消失**——没人碰过的蛋会一直躺着，要不要加"到期自动消失"。
-10. **回盾的机制**——`3002` 的 `regen` 是恒定速率，跟对手的伤害频率一比就是条硬线（实测回盾 12 → 盾球赢 3/9，14 → 4/6），
+8. ~~**宿儺与开放型领域**~~ —— ✅ 已做（`8003` 伏魔御厨子 + `8004` 必中斩 + `7003`/`2007`/`2008`/`2009`，
+   见自查第 16 条）。**还欠一轮数值**：宿儺没有防御层，被五条的平A（5000 一下）三下放倒；
+   反过来五条的护盾 + 无下限能吃掉他所有斩击，只有领域打得动——这是原作关系，但两边都需要调手感的数。
+9. **原身宿儺 / 其它咒术角色**——组件都是现成的：再建一个 `assets/data/balls/<id>/`，
+   血量按基准 10000（顶级 12000）配，专属能力放 `components/jujutsu/<角色>/`。
+10. **蛋的到期消失**——没人碰过的蛋会一直躺着，要不要加"到期自动消失"。
+11. **回盾的机制**——`3002` 的 `regen` 是恒定速率，跟对手的伤害频率一比就是条硬线（实测回盾 12 → 盾球赢 3/9，14 → 4/6），
    想"势均力敌但不脆"得换成"破盾后隔 N 秒才开始回"这类机制，见 `FunctionGuide` 的 `3002` 一节。

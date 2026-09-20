@@ -215,7 +215,7 @@ public partial class Game : Node
             count++;
         }
 
-        foreach (var node in GetTree().GetNodesInGroup(Purple.PurplesGroup))
+        foreach (var node in GetTree().GetNodesInGroup(DamageProjectile.ProjectilesGroup))
         {
             node.QueueFree();
             count++;
@@ -223,7 +223,7 @@ public partial class Game : Node
 
         if (count > 0)
         {
-            GD.Print($"[对战] 清掉场上剩下的 {count} 个蛋/苍赫/茈");
+            GD.Print($"[对战] 清掉场上剩下的 {count} 个蛋/苍赫/飞行物");
         }
     }
 

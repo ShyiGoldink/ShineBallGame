@@ -157,7 +157,7 @@ public partial class HollowPurple : BallComponent
         purple.Name = "茈球";
         // 和苍/赫 挂在同一个父节点下，所以位置要换成相对父节点的局部坐标
         purple.Position = parent is Node2D parent2D ? origin - parent2D.GlobalPosition : origin;
-        purple.Setup(_ball.Group, _ball.Id, Speed, Damage, Delay, Life, Size);
+        purple.Launch(_ball, _ball.Id, Damage, Speed, Delay, Life, Size);
         parent.AddChild(purple);
 
         // 出招：进一次攻击状态（时长和动画走招式表）

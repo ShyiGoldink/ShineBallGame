@@ -27,6 +27,12 @@ public static class ComponentLibrary
                 return new JujutsuSkill();
             case 2006:
                 return new HollowPurple();
+            case 2007:
+                return new Dismantle();
+            case 2008:
+                return new Cleave();
+            case 2009:
+                return new Fuga();
             case 3001:
                 return new ConditionalImmune();
             case 3002:
@@ -49,6 +55,8 @@ public static class ComponentLibrary
                 return new SandbagDamage();
             case 4007:
                 return new HpRefill();
+            case 4008:
+                return new TrueDamage();
             case 5001:
                 return new CircleShape();
             case 6001:
@@ -59,10 +67,16 @@ public static class ComponentLibrary
                 return new CursedEnergy();
             case 7002:
                 return new CursedEnergyGauge();
+            case 7003:
+                return new SlashMark();
             case 8001:
                 return new UnlimitedVoid();
             case 8002:
                 return new DomainControl();
+            case 8003:
+                return new MalevolentShrine();
+            case 8004:
+                return new MalevolentSlash();
             default:
                 GD.PushError($"[装配] 没有编号为 {id} 的组件。");
                 return null;

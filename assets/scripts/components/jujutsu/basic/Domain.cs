@@ -83,6 +83,13 @@ public abstract partial class Domain : BallComponent
     /// <summary>这会儿领域开着没有。</summary>
     public bool Active => _active;
 
+    /// <summary>
+    /// 这会儿是不是**正在开**（前摇里、还没真正展开）。
+    /// 给"领域对撞"用：两边同时开的时候，先展开的那一方不该在对方的前摇里把对面锁死——
+    /// 所以判定"我正在用领域顶"时，前摇中也要算数（见 `DomainQuery.Contesting`）。
+    /// </summary>
+    public bool Pending => _pending;
+
     private Ball _ball;
     private CursedEnergy _pool;
     private DomainField _field;
@@ -221,7 +228,7 @@ public abstract partial class Domain : BallComponent
         }
 
         // 没开：场上出现敌对领域就立马跟进
-        if (Follow && EnemyDomainUp())
+        if (Follow && DomainQuery.EnemyDomainUp(_ball))
         {
             TryFollow();
         }
@@ -301,20 +308,6 @@ public abstract partial class Domain : BallComponent
         }
 
         return Radius * scale;
-    }
-
-    /// <summary>场上有没有**别的阵营**的生效中领域（"对手开领域了没有"）。</summary>
-    private bool EnemyDomainUp()
-    {
-        foreach (var node in GetTree().GetNodesInGroup(DomainField.FieldsGroup))
-        {
-            if (node is DomainField field && field.Active && field.OwnerGroup != _ball.Group)
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /// <summary>
@@ -482,6 +475,41 @@ public abstract partial class Domain : BallComponent
 
     /// <summary>外壳还剩多少（用来显示）。</summary>
     private float ShellLeft => Mathf.Max(0f, _shellMax - _shellDamage);
+
+    /// <summary>
+    /// **领域把那一下必中吸下来**：对方的领域必中打过来时，先算在保护你的这个领域上，
+    /// 而不是打在人身上（见 `8004`）。返回 true = 这一下到此为止，别打到持有者。
+    ///
+    /// * **非开放型**：记到外壳的账上，攒够就把领域打碎——所以两个领域对撞时，
+    ///   谁的壳先撑不住谁先暴露（这就是"领域互相抵消必中"）；
+    /// * **开放型没有壳**：不吃伤害，但**照样把必中抵消掉**——这就是开放型的强势之处：
+    ///   打不碎它，可它一直替持有者挡着对面的必中。代价是范围压不过别人时会被覆盖。
+    /// * 领域还没开着：返回 false（没东西可挡，必中直接落到人身上）。
+    ///
+    /// 和"持有者挨打记账"（`OnTakeDamage`，受伤链 750 那一格）是两个入口、同一本账：
+    /// 那条是"人挨的打"，这条是"领域替人挨的打"。两条的伤害都不进血量。
+    /// </summary>
+    public bool Absorb(float amount)
+    {
+        if (!_active)
+        {
+            return false;
+        }
+
+        if (Open || amount <= 0f)
+        {
+            return true; // 开放型：不吃伤害，但必中被它挡下来了
+        }
+
+        _shellDamage += amount;
+
+        if (_shellDamage >= _shellMax)
+        {
+            Close("外壳被打碎");
+        }
+
+        return true;
+    }
 
     /// <summary>外壳还剩多少（0~1）。</summary>
     private float ShellRatio => _shellMax > 0f ? Mathf.Clamp(ShellLeft / _shellMax, 0f, 1f) : 1f;

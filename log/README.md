@@ -33,5 +33,6 @@ res://assets/scripts/components/basic 放基础通用组件。
 res://assets/scripts/components/jujutsu/cursed_energy 放咒力底层机制。
 res://assets/scripts/components/jujutsu/basic 放咒术通用机制（领域基类、领域效果）。
 res://assets/scripts/components/jujutsu/gojo 放五条悟专属能力。
+res://assets/scripts/components/jujutsu/sukuna 放宿儺专属能力（斩击刻印、解/捌、灶開、伏魔御厨子）。
 res://assets/scripts/domains 放领域在场上的样子（圈、环、进出判定）。
-res://assets/scripts/eggs / orbs / projectiles 放场上"不是球"的东西：蛋、苍/赫球、茈球。
+res://assets/scripts/eggs / orbs / projectiles 放场上"不是球"的东西：蛋、苍/赫球、飞行物（茈/斩击/火焰）。

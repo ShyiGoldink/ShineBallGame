@@ -113,34 +113,11 @@ public partial class DomainControl : BallComponent
     /// </summary>
     private bool Caught()
     {
-        if (OwnDomainUp())
+        if (DomainQuery.Contesting(_ball))
         {
-            return false; // 自己也有领域：先由领域顶着，还没轮到自己吃效果
+            return false; // 自己也有领域（或者正在开）：先由领域顶着，还没轮到自己吃效果
         }
 
-        foreach (var node in GetTree().GetNodesInGroup(DomainField.FieldsGroup))
-        {
-            if (node is DomainField field && field.Active
-                && field.OwnerGroup != _ball.Group && field.Contains(_ball.GlobalPosition))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /// <summary>自己身上有没有生效中的领域（自己展开的领域组件，问它 `Active`）。</summary>
-    private bool OwnDomainUp()
-    {
-        foreach (var child in _ball.GetChildren())
-        {
-            if (child is Domain domain && domain.Active)
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return DomainQuery.CoveringField(_ball) != null;
     }
 }

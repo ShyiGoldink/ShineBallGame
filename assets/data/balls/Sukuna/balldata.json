@@ -1,0 +1,33 @@
+{
+  "name": "20指·虎杖身·宿儺",
+  "hp": 12000,
+  "type": 1,
+  "selfcomponents": {
+    "1001": { "speed": 700 },
+    "2005": { "cd": 4, "cost": 0, "move": "dismantle", "skills": { "dismantle": 3, "cleave": 2, "fuga": 1, "domain": 1 } },
+    "2007": { "hits": 2, "damage": 800, "cost": 800, "gap": 0.15, "marks": 1 },
+    "2008": { "base": 500, "ratio": 0.08, "cost": 1200, "marks": 1 },
+    "2009": { "base": 2000, "per_stack": 800, "cost": 3000, "consume": true, "splash": 160, "move": "fuga" },
+    "4001": {},
+    "4005": {},
+    "7001": {
+      "amount": 20000,
+      "regen": 400,
+      "cost_rate": 1,
+      "reverse_rate": 1000
+    },
+    "7002": {},
+    "7003": {},
+    "8003": { "radius": 450, "priority": 20, "duration": 99, "cost": 6000, "burnout_time": 20 }
+  },
+  "enemycomponents": {
+    "4008": { "source_prefix": "domain." },
+    "8004": { "interval": 1, "damage": 1200, "marks": 1 }
+  },
+  "attacks": {
+    "dismantle": { "time": 0.5 },
+    "cleave": { "time": 0.6 },
+    "fuga": { "time": 1 },
+    "domain": { "time": 1.5 }
+  }
+}
