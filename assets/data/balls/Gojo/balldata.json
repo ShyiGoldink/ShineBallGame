@@ -20,7 +20,7 @@
       "black_flash": { "reverse_rate": 500 }
     },
     "7002": {},
-    "8001": { "radius": 380, "priority": 20, "duration": 99, "cost": 6000, "burnout_time": 20 }
+    "8001": { "radius": 800, "priority": 20, "duration": 99, "cost": 6000, "burnout_time": 20 }
   },
   "enemycomponents": {
     "1002": {},

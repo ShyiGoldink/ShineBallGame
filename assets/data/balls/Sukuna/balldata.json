@@ -19,7 +19,7 @@
     },
     "7002": {},
     "7003": {},
-    "8003": { "radius": 450, "priority": 20, "duration": 99, "cost": 6000, "burnout_time": 20 }
+    "8003": { "radius": 1200, "priority": 20, "duration": 99, "cost": 6000, "burnout_time": 20 }
   },
   "enemycomponents": {
     "4008": { "source_prefix": "domain." },

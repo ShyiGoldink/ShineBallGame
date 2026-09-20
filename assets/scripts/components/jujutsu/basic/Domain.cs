@@ -10,7 +10,7 @@ using Godot;
 /// | 参数 | 说明 |
 /// | --- | --- |
 /// | `open` | **开放型领域**：没有外壳，所以打不碎、也不参与优先级比较；不写就是"非开放" |
-/// | `shell_hp` | 外壳能扛多少伤害。**不写就用持有者最大血量的一半**（挨够这么多就把领域打碎） |
+/// | `shell_hp` | 外壳能扛多少伤害。**不写就用持有者最大血量的一半**（流血攒够这么多就把领域打碎） |
 /// | `radius` | 半径：外壳/场就在这个半径上，也是场展开的大小 |
 /// | `priority` | 优先级：**数字大的压缩数字小的**，差 10 以上直接把对方压到 0（领域当场被覆盖） |
 ///
@@ -22,9 +22,10 @@ using Godot;
 /// 1. **什么时候开**：对手场上出现了敌对领域就**立马跟进**（每帧检查，条件一满足就开）；
 ///    平时则当成一招——招式表里挑中 `move` 这个名字时，出招的组件照常起手，
 ///    这里订 `attack_started` 认领那一招，然后展开。两条路最后都走"付账 → 前摇 → 展开"。
-/// 2. **外壳怎么掉血**：领域生效期间，持有者挨的伤害记一笔账（在受伤链上排在无敌后面、
-///    护盾前面，读 `Original`——被护盾吃掉的那部分也算，被无敌挡下来的不算），
-///    攒够 `shell_hp` 就把领域打碎。**伤害照常进持有者的血**，这一层不替人挨打。
+/// 2. **外壳怎么掉血**：领域生效期间，持有者**实际掉了多少血**就记多少（`hp_changed` 的负数那份），
+///    攒够 `shell_hp` 就把领域打碎——所以**被护盾/无下限吃掉的那些不算**（那不算流血）。
+///    另一笔是对方的领域必中：它由 `Absorb` 直接磨壳。两笔都攒在同一本 `shell_hp` 上。
+///    回血不往回退（记的是"累计挨了多少"）。
 /// 3. **范围互相压**：非开放型领域每帧算一次"有效半径"，
 ///    `半径 × (1 − 优先级差 ÷ 10)`，差 10 以上就是 0 —— 领域当场被对面覆盖。
 /// 4. **收场进熔断**：时间到、被打碎、被覆盖，三种都算"领域结束"，
@@ -145,11 +146,11 @@ public abstract partial class Domain : BallComponent
             return;
         }
 
-        // 一、外壳的账：挨打就记一笔（详细规则见类说明第 2 条）
-        ball.Events.Register(EventName.take_damage, new EventResponseFunction
+        // 一、外壳的账：**掉了多少血就记多少**（详细规则见类说明第 2 条）
+        ball.Events.Register(EventName.hp_changed, new EventResponseFunction
         {
-            priority = DamagePriority.DomainShell,
-            action = OnTakeDamage,
+            priority = 0,
+            action = OnHpChanged,
         });
 
         // 二、认领招式：谁在招式表里演了 `Move` 这一招，谁就是在开这个领域
@@ -450,20 +451,26 @@ public abstract partial class Domain : BallComponent
     }
 
     /// <summary>
-    /// 受伤链上的外壳账：领域生效期间，挨的伤害攒起来，攒够就把领域打碎。
-    /// **记的是 `Original`（打进来多少），不是 `Amount`（还剩多少）**——
-    /// 护盾吃掉的那部分也算挨打（不然有盾的家伙领域永远碎不了），
-    /// 而真被无敌挡下来的伤害到不了这儿（那个在更前面就阻塞了整条链）。
-    /// 不阻塞，伤害照常往后走。
+    /// 外壳的账：**领域生效期间，持有者实际掉了多少血就记多少**（`hp_changed` 的负数那份），
+    /// 攒够 `shell_hp` 就把领域打碎。
+    ///
+    /// 为什么按"实际掉的血"而不是"打进来的伤害"：被护盾/无下限吃掉的那些**不算**——
+    /// 领域是因为**施术者本人在流血**才撑不住的，而不是"被摸了一下"。所以这条和
+    /// "必中先打领域"（`Absorb`，对方领域的效果直接磨壳）是两笔账：
+    /// 一笔记施术者挨的伤，一笔记领域替人挡下来的伤，都攒在同一本 `shell_hp` 上。
+    ///
+    /// 回血**不往回退**：记的是"累计挨了多少"（累计伤害），不是"现在还剩多少血"。
+    /// 想改成"掉到半血以下才算"，读 `_ball.Hp` 比一下就行——那是另一套手感。
+    /// 通知类事件，一律放行。
     /// </summary>
-    private bool OnTakeDamage(object arg)
+    private bool OnHpChanged(object arg)
     {
-        if (!_active || Open || arg is not DamageEvent hit)
+        if (!_active || Open || arg is not float delta || delta >= 0f)
         {
-            return true;
+            return true; // 没开、开放型（没有壳）、或者这次是回血：不记
         }
 
-        _shellDamage += Mathf.Max(hit.Original, 0f);
+        _shellDamage -= delta; // delta 是负数（掉血），取正数记进来
 
         if (_shellDamage >= _shellMax)
         {

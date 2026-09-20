@@ -25,7 +25,7 @@ public partial class MalevolentShrine : Domain
     public MalevolentShrine()
     {
         Open = true;        // 没有壳：打不碎，只按时间到期
-        Radius = 450f;      // 比无量空处大一圈（原作里它的范围也更夸张）
+        Radius = 1200f;     // 比无量空处大一圈（原作里它的范围也更夸张：能罩住整座城）
         Priority = 20;      // 和无量空处同级：谁也压不动谁，就是拼谁的壳先碎
         Duration = 99f;
         Cost = 6000f;

@@ -12,7 +12,7 @@ using Godot;
 /// 所以想改"控多久""还能不能还手"，改的是 Json，不是这儿。
 ///
 /// 默认值（都能被 `balldata.json` 里的同名键覆盖）：
-/// 半径 380、优先级 20、外壳 = 最大血量的一半（五条 1200 血 → 600）、持续 99 秒、
+/// 半径 800、优先级 20、外壳 = 最大血量的一半（五条 12000 血 → 6000）、持续 99 秒、
 /// 名义消耗 600 咒力（他配了六眼的消耗倍率 0.01，实际只花 6）、收场熔断 20 秒。
 /// </summary>
 public partial class UnlimitedVoid : Domain
@@ -30,7 +30,7 @@ public partial class UnlimitedVoid : Domain
 
     public UnlimitedVoid()
     {
-        Radius = 380f;
+        Radius = 800f;
         Priority = 20;
         Duration = 99f;
         Cost = 600f;
