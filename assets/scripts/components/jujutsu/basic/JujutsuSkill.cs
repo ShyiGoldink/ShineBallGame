@@ -130,34 +130,65 @@ public partial class JujutsuSkill : BallComponent
         }
 
         _cdLeft = Cd;
-        Cast(PickSkill());
+
+        // 抽招之前先问一遍"这一招现在能不能用"（见 `BallComponent.CanUse`）：
+        // 用不了的（领域还开着、灶開刻印不够……）直接剔出这一轮，别白演一下、白花咒力
+        string skill = PickSkill();
+        if (skill == null)
+        {
+            _cdLeft = Cd;
+            GD.Print($"[{Type}] {_ball.Name} 这一轮没有能用的招，跳过");
+            return;
+        }
+
+        Cast(skill);
     }
 
-    /// <summary>按权重抽一招。表写坏了（权重全是 0 或没有表）就退回唯一的那一招。</summary>
+    /// <summary>
+    /// 按权重抽一招：**先把"现在用不了"的剔掉**再按权重抽（剩下的重新归一化），
+    /// 所以领域开着的时候抽不到 `domain`、刻印不够时抽不到 `fuga`。
+    /// 没有表（`skills` 是空的）就退回默认那一招（苍/赫）；
+    /// 有表但这一轮全用不了就返回 null，让调用方跳过这一轮。
+    /// </summary>
     private string PickSkill()
     {
+        if (Skills.Count == 0)
+        {
+            return BlueRedSkill; // 老行为：没配表就放苍赫
+        }
+
+        var usable = new Godot.Collections.Dictionary();
         float total = 0f;
+
         foreach (var key in Skills.Keys)
         {
-            total += Mathf.Max(Skills[key].AsSingle(), 0f);
+            float weight = Mathf.Max(Skills[key].AsSingle(), 0f);
+            string name = key.ToString();
+            if (weight <= 0f || !_ball.CanUseMove(name))
+            {
+                continue; // 权重是 0、或者这一招现在用不了：不参与这一轮
+            }
+
+            usable[name] = weight;
+            total += weight;
         }
 
         if (total <= 0f)
         {
-            return BlueRedSkill;
+            return null; // 有表，但这一轮一招都用不了
         }
 
         float roll = GD.Randf() * total;
-        foreach (var key in Skills.Keys)
+        foreach (var key in usable.Keys)
         {
-            roll -= Mathf.Max(Skills[key].AsSingle(), 0f);
+            roll -= usable[key].AsSingle();
             if (roll <= 0f)
             {
                 return key.ToString();
             }
         }
 
-        return BlueRedSkill;
+        return null;
     }
 
     private void Cast(string skill)

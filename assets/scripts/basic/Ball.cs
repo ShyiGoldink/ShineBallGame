@@ -76,6 +76,28 @@ public partial class Ball : CharacterBody2D
 	}
 
 	/// <summary>
+	/// 这一招现在能不能用：**问球上的每个组件**（组件认领自己的招式，不认识这一招的返回 true）。
+	/// 出招器抽招之前会先过一遍，全被挡住就这一轮不出招——见 `BallComponent.CanUse`。
+	/// </summary>
+	public bool CanUseMove(string moveId)
+	{
+		if (string.IsNullOrEmpty(moveId))
+		{
+			return true;
+		}
+
+		foreach (var child in GetChildren())
+		{
+			if (child is BallComponent component && !component.CanUse(moveId))
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/// <summary>
 	/// 把当前血量推给身上的血条；身上没有血条就什么都不做。
 	/// 血条挂在条区（`BallLayout`）下面，所以要问条区要，不能只扫自己的直接子节点。
 	/// </summary>

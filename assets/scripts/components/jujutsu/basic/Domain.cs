@@ -145,6 +145,21 @@ public abstract partial class Domain : BallComponent
     }
 
     /// <summary>
+    /// 这一招现在能不能用：**已经开着、正在开（前摇）、或者术式熔断了就别再开了**。
+    /// 出招器抽到 `domain` 时会先问这一句——不然领域开着的时候还会白演一遍、白花咒力
+    /// （"这一轮没有能用的招就跳过"）。
+    /// </summary>
+    public override bool CanUse(string moveId)
+    {
+        if (string.IsNullOrEmpty(moveId) || moveId != Move)
+        {
+            return true; // 不是我这招：放行
+        }
+
+        return !_active && !_pending && (_pool == null || !_pool.BurnedOut);
+    }
+
+    /// <summary>
     /// 装配时接线：拿到球和咒力池、订两条事件、把球身上那根领域条造出来、登记面板那行数。
     /// 和前摇、外壳相关的账都在这儿起头，真正展开要等到开打以后（见 `_PhysicsProcess`）。
     /// </summary>

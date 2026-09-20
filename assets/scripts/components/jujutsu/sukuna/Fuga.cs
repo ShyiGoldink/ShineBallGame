@@ -83,6 +83,21 @@ public partial class Fuga : BallComponent
         Move = JsonTool.GetValue(parameters, "move", Move);
     }
 
+    /// <summary>
+    /// 这一招现在能不能用：**刻印够 `min_stacks` 才放**。
+    /// 出招器会先问这一句，不够就把这一招剔出这一轮（改放别的招），
+    /// 而不是"放出来又收回"；`OnAttackStarted` 里那句检查是兜底。
+    /// </summary>
+    public override bool CanUse(string moveId)
+    {
+        if (string.IsNullOrEmpty(moveId) || moveId != Move)
+        {
+            return true;
+        }
+
+        return _marks != null && _marks.Count >= MinStacks;
+    }
+
     public override void Bind(Ball ball, string configId)
     {
         _ball = ball;
