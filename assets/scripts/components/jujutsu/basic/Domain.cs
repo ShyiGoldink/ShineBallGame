@@ -10,7 +10,8 @@ using Godot;
 /// | 参数 | 说明 |
 /// | --- | --- |
 /// | `open` | **开放型领域**：没有外壳，所以打不碎、也不参与优先级比较；不写就是"非开放" |
-/// | `shell_hp` | 外壳能扛多少伤害。**不写就用持有者最大血量的一半**（流血攒够这么多就把领域打碎） |
+/// | `shell_hp` | **领域自己的血条**有多厚。**不写就用持有者最大血量的一半** |
+/// | `wound_hp` | 持有者**掉血累计**到多少就碎领域。**不写就用最大血量的一半** |
 /// | `radius` | 半径：外壳/场就在这个半径上，也是场展开的大小 |
 /// | `priority` | 优先级：**数字大的压缩数字小的**，差 10 以上直接把对方压到 0（领域当场被覆盖） |
 ///
@@ -22,10 +23,13 @@ using Godot;
 /// 1. **什么时候开**：对手场上出现了敌对领域就**立马跟进**（每帧检查，条件一满足就开）；
 ///    平时则当成一招——招式表里挑中 `move` 这个名字时，出招的组件照常起手，
 ///    这里订 `attack_started` 认领那一招，然后展开。两条路最后都走"付账 → 前摇 → 展开"。
-/// 2. **外壳怎么掉血**：领域生效期间，持有者**实际掉了多少血**就记多少（`hp_changed` 的负数那份），
-///    攒够 `shell_hp` 就把领域打碎——所以**被护盾/无下限吃掉的那些不算**（那不算流血）。
-///    另一笔是对方的领域必中：它由 `Absorb` 直接磨壳。两笔都攒在同一本 `shell_hp` 上。
-///    回血不往回退（记的是"累计挨了多少"）。
+/// 2. **什么时候碎**：**两条分开的账，哪条先满都碎**（都是非开放型才有）——
+///    * **领域自己的血条**（`shell_hp`）：挨打就掉——打进来的伤害（读 `Original`，
+///      被护盾吃掉的也算，因为那是打在**壳**上的），加上对方领域必中直接磨壳的那部分（`Absorb`）。
+///      球身上那根领域条和面板上"壳 xxx / yyy"就是它。
+///    * **施术者流了多少血**（`wound_hp`，默认 = 最大血量的一半）：领域生效期间，
+///      持有者**实际掉了多少血**就记多少（`hp_changed` 的负数那份）。
+///      被护盾/无下限吃掉的那些**不算**——那不是人挨的。回血不往回退（记的是"累计"）。
 /// 3. **范围互相压**：非开放型领域每帧算一次"有效半径"，
 ///    `半径 × (1 − 优先级差 ÷ 10)`，差 10 以上就是 0 —— 领域当场被对面覆盖。
 /// 4. **收场进熔断**：时间到、被打碎、被覆盖，三种都算"领域结束"，
@@ -54,6 +58,9 @@ public abstract partial class Domain : BallComponent
 
     /// <summary>外壳能扛多少伤害。**0（不写）就用持有者最大血量的一半**。</summary>
     public float ShellHp;
+
+    /// <summary>持有者掉血累计到多少就碎领域。**0（不写）就用持有者最大血量的一半**。</summary>
+    public float WoundHp;
 
     /// <summary>半径：场的边界（也是外壳的位置）。</summary>
     public float Radius = 360f;
@@ -101,11 +108,20 @@ public abstract partial class Domain : BallComponent
     private float _windupLeft;
     private float _timeLeft;
 
-    /// <summary>外壳总共能扛多少（`ShellHp`，没配就是最大血量的一半）。</summary>
+    /// <summary>领域自己的血条有多厚（`ShellHp`，没配就是最大血量的一半）。</summary>
     private float _shellMax;
 
-    /// <summary>这一轮已经挨了多少（算的是"打进来的伤害"，不是"掉了多少血"）。</summary>
+    /// <summary>领域血条已经掉了多少（挨打就记，读的是"打进来多少"）。</summary>
     private float _shellDamage;
+
+    /// <summary>施术者掉血累计到多少就碎领域（`WoundHp`，没配就是最大血量的一半）。</summary>
+    private float _woundMax;
+
+    /// <summary>这一轮施术者一共流了多少血（只记真的掉血，被盾吃掉的不算）。</summary>
+    private float _wound;
+
+    /// <summary>下一次"领域开始不稳"的提示线（每 1/4 报一次，方便对数）。</summary>
+    private float _woundWarned;
 
     /// <summary>上一次推给场 / 报过日志的半径（被对面的领域压小了就报一句，方便对数）。</summary>
     private float _radiusLogged;
@@ -116,6 +132,7 @@ public abstract partial class Domain : BallComponent
         Cost = JsonTool.GetValue(parameters, "cost", Cost);
         Open = JsonTool.GetValue(parameters, "open", Open);
         ShellHp = JsonTool.GetValue(parameters, "shell_hp", ShellHp);
+        WoundHp = JsonTool.GetValue(parameters, "wound_hp", WoundHp);
         Radius = JsonTool.GetValue(parameters, "radius", Radius);
         Priority = JsonTool.GetValue(parameters, "priority", Priority);
         Windup = JsonTool.GetValue(parameters, "windup", Windup);
@@ -146,21 +163,29 @@ public abstract partial class Domain : BallComponent
             return;
         }
 
-        // 一、外壳的账：**掉了多少血就记多少**（详细规则见类说明第 2 条）
+        // 一、领域血条的账：**打进来多少就掉多少**（受伤链排在护盾前面，读 Original——
+        //    护盾吃掉的那部分也算，因为那是打在壳上、不是打在血上）
+        ball.Events.Register(EventName.take_damage, new EventResponseFunction
+        {
+            priority = DamagePriority.DomainShell,
+            action = OnTakeDamage,
+        });
+
+        // 二、施术者流血的账：**掉了多少血就记多少**（和上面那笔完全分开）
         ball.Events.Register(EventName.hp_changed, new EventResponseFunction
         {
             priority = 0,
             action = OnHpChanged,
         });
 
-        // 二、认领招式：谁在招式表里演了 `Move` 这一招，谁就是在开这个领域
+        // 三、认领招式：谁在招式表里演了 `Move` 这一招，谁就是在开这个领域
         ball.Events.Register(EventName.attack_started, new EventResponseFunction
         {
             priority = 0,
             action = OnAttackStarted,
         });
 
-        // 三、条：自己造、自己挂进条区（没开领域的时候是隐藏的，不占地方）
+        // 四、条：自己造、自己挂进条区（没开领域的时候是隐藏的，不占地方）
         var layout = BallLook.Layout(ball);
         if (layout == null)
         {
@@ -172,7 +197,7 @@ public abstract partial class Domain : BallComponent
             layout.AddChild(_bar);
         }
 
-        // 四、面板那一行数：登记**现算函数**，不是当前值（装配期谁先 Bind 不保证）
+        // 五、面板那一行数：登记**现算函数**，不是当前值（装配期谁先 Bind 不保证）
         ball.Readouts.Add(new BallReadout(DisplayName, Readout));
 
         GD.Print($"[{Type}] {ball.Name} 的{DisplayName}就绪：{ShellText}，"
@@ -389,6 +414,9 @@ public abstract partial class Domain : BallComponent
         _timeLeft = Mathf.Max(Duration, 0.01f);
         _shellMax = Open ? 0f : (ShellHp > 0f ? ShellHp : _ball.MaxHp * 0.5f);
         _shellDamage = 0f;
+        _woundMax = Open ? 0f : (WoundHp > 0f ? WoundHp : _ball.MaxHp * 0.5f);
+        _wound = 0f;
+        _woundWarned = _woundMax * 0.25f;
 
         _field = CreateField();
         _field.Name = DisplayName;
@@ -410,7 +438,7 @@ public abstract partial class Domain : BallComponent
         }
 
         GD.Print($"[{Type}] {_ball.Name} 展开{DisplayName}：半径 {Radius:0}、优先级 {Priority}、"
-            + (Open ? "开放型（没有外壳）" : $"外壳 {_shellMax:0}")
+            + (Open ? "开放型（没有外壳）" : $"领域血条 {_shellMax:0}、掉血上限 {_woundMax:0}")
             + $"，持续 {Duration:0}s");
         OnExpanded();
     }
@@ -451,16 +479,33 @@ public abstract partial class Domain : BallComponent
     }
 
     /// <summary>
-    /// 外壳的账：**领域生效期间，持有者实际掉了多少血就记多少**（`hp_changed` 的负数那份），
-    /// 攒够 `shell_hp` 就把领域打碎。
+    /// **领域血条**的账：领域生效期间，**打进来多少伤害就掉多少**（`Original`——
+    /// 被护盾吃掉的那部分也算，因为那是打在壳上，不是打在血上），掉光就把领域打碎。
+    /// 不阻塞，伤害照常往后走（护盾、扣血那一套不受影响）。
+    /// </summary>
+    private bool OnTakeDamage(object arg)
+    {
+        if (!_active || Open || arg is not DamageEvent hit)
+        {
+            return true;
+        }
+
+        _shellDamage += Mathf.Max(hit.Original, 0f);
+
+        if (_shellDamage >= _shellMax)
+        {
+            Close("领域血条被打空");
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// **施术者流血**的账：领域生效期间，持有者实际掉了多少血就记多少（`hp_changed` 的负数那份），
+    /// 攒够 `wound_hp`（默认 = 最大血量的一半）也把领域打碎。**和领域血条是分开的两笔。**
     ///
-    /// 为什么按"实际掉的血"而不是"打进来的伤害"：被护盾/无下限吃掉的那些**不算**——
-    /// 领域是因为**施术者本人在流血**才撑不住的，而不是"被摸了一下"。所以这条和
-    /// "必中先打领域"（`Absorb`，对方领域的效果直接磨壳）是两笔账：
-    /// 一笔记施术者挨的伤，一笔记领域替人挡下来的伤，都攒在同一本 `shell_hp` 上。
-    ///
-    /// 回血**不往回退**：记的是"累计挨了多少"（累计伤害），不是"现在还剩多少血"。
-    /// 想改成"掉到半血以下才算"，读 `_ball.Hp` 比一下就行——那是另一套手感。
+    /// 为什么被护盾/无下限吃掉的不算：那不是"人挨的"——领域是施术者本人在流血才撑不住的。
+    /// 回血**不往回退**：记的是"累计掉了多少"，不是"现在还剩多少血"。
     /// 通知类事件，一律放行。
     /// </summary>
     private bool OnHpChanged(object arg)
@@ -470,11 +515,18 @@ public abstract partial class Domain : BallComponent
             return true; // 没开、开放型（没有壳）、或者这次是回血：不记
         }
 
-        _shellDamage -= delta; // delta 是负数（掉血），取正数记进来
+        _wound -= delta; // delta 是负数（掉血），取正数记进来
 
-        if (_shellDamage >= _shellMax)
+        // 每过 1/4 报一句，方便看"离碎还有多远"（不然只有碎的那一下有日志）
+        while (_woundMax > 0f && _wound >= _woundWarned && _woundWarned < _woundMax)
         {
-            Close("外壳被打碎");
+            GD.Print($"[{Type}] {_ball.Name} 的{DisplayName}开始不稳：累计掉血 {_wound:0} / {_woundMax:0}");
+            _woundWarned += _woundMax * 0.25f;
+        }
+
+        if (_woundMax > 0f && _wound >= _woundMax)
+        {
+            Close("施术者累计掉血到一半");
         }
 
         return true;
@@ -512,7 +564,7 @@ public abstract partial class Domain : BallComponent
 
         if (_shellDamage >= _shellMax)
         {
-            Close("外壳被打碎");
+            Close("领域血条被打空");
         }
 
         return true;
@@ -521,7 +573,10 @@ public abstract partial class Domain : BallComponent
     /// <summary>外壳还剩多少（0~1）。</summary>
     private float ShellRatio => _shellMax > 0f ? Mathf.Clamp(ShellLeft / _shellMax, 0f, 1f) : 1f;
 
-    /// <summary>面板那一行数：没开就写"未展开"；开了显示还剩几秒、壳还剩多少。</summary>
+    /// <summary>
+    /// 面板那一行数：没开就写"未展开"；开了显示还剩几秒、领域血条还剩多少、
+    /// 施术者累计掉了多少血（两条碎裂条件都能看见）。
+    /// </summary>
     private string Readout()
     {
         if (!_active)
@@ -531,13 +586,13 @@ public abstract partial class Domain : BallComponent
 
         return Open
             ? $"剩 {_timeLeft:0}s（开放型，没有外壳）"
-            : $"剩 {_timeLeft:0}s　壳 {ShellLeft:0} / {_shellMax:0}";
+            : $"剩 {_timeLeft:0}s　壳 {ShellLeft:0}/{_shellMax:0}　流血 {_wound:0}/{_woundMax:0}";
     }
 
-    /// <summary>日志和面板里描述外壳的那半句话。</summary>
+    /// <summary>装配日志里描述"这个领域有多耐打"的那半句话。</summary>
     private string ShellText => Open
         ? "开放型（没有外壳）"
-        : (ShellHp > 0f ? $"外壳 {ShellHp:0}" : "外壳 = 最大血量的一半");
+        : (ShellHp > 0f ? $"领域血条 {ShellHp:0}" : "领域血条 = 最大血量的一半");
 
     // ---------- 子类可以改的几处 ----------
 
